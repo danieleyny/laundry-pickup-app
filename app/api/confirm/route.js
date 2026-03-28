@@ -22,7 +22,16 @@ export async function GET(request) {
     const customer = customers.find((c) =>
       c.emails.some((e) => e.toLowerCase() === email.toLowerCase())
     );
-    const customerName = customer?.name || "Unknown";
+
+    // If email not found in customer list, redirect to not_found page
+    if (!customer) {
+      const notFoundUrl = new URL("/confirm", request.url);
+      notFoundUrl.searchParams.set("status", "not_found");
+      notFoundUrl.searchParams.set("email", email);
+      return NextResponse.redirect(notFoundUrl);
+    }
+
+    const customerName = customer.name;
 
     const result = await logPickupConfirmation(
       area,

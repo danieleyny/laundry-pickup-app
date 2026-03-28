@@ -7,6 +7,7 @@ function ConfirmContent() {
   const status = params.get("status");
   const day = params.get("day");
   const name = params.get("name") || "";
+  const email = params.get("email") || "";
 
   const firstName = name.split(" ")[0];
 
@@ -44,6 +45,34 @@ function ConfirmContent() {
     );
   }
 
+  if (status === "not_found") {
+    const subject = encodeURIComponent("Pick Up Confirmation Error");
+    const body = encodeURIComponent(
+      "I tried requesting a pick up but received an error when i put my email in"
+    );
+    const mailtoLink = `mailto:laundrydaynyc@gmail.com?subject=${subject}&body=${body}`;
+
+    return (
+      <div style={styles.container}>
+        <div style={styles.card}>
+          <div style={{ ...styles.checkmark, background: "#F8D7DA", color: "#721C24" }}>?</div>
+          <h1 style={styles.title}>Email not found</h1>
+          <p style={styles.message}>
+            We couldn&apos;t find <strong>{email}</strong> in our customer list.
+            This could be a typo or you may be registered under a different email.
+          </p>
+          <p style={styles.sub}>
+            Please contact us so we can get this sorted out:
+          </p>
+          <a href={mailtoLink} style={styles.contactBtn}>
+            Email Laundry Day NYC
+          </a>
+          <div style={styles.footer}>laundrydaynyc@gmail.com</div>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={styles.container}>
       <div style={styles.card}>
@@ -53,6 +82,12 @@ function ConfirmContent() {
           We couldn&apos;t process your confirmation. Please reply to the email
           or contact us directly.
         </p>
+        <a
+          href={`mailto:laundrydaynyc@gmail.com?subject=${encodeURIComponent("Pick Up Confirmation Error")}&body=${encodeURIComponent("I tried requesting a pick up but received an error when i put my email in")}`}
+          style={styles.contactBtn}
+        >
+          Email Laundry Day NYC
+        </a>
       </div>
     </div>
   );
@@ -122,8 +157,19 @@ const styles = {
     color: "#777",
     lineHeight: "1.5",
   },
+  contactBtn: {
+    display: "inline-block",
+    marginTop: "20px",
+    padding: "12px 28px",
+    background: "#667eea",
+    color: "white",
+    textDecoration: "none",
+    borderRadius: "8px",
+    fontSize: "16px",
+    fontWeight: "600",
+  },
   footer: {
-    marginTop: "24px",
+    marginTop: "16px",
     fontSize: "13px",
     color: "#999",
   },

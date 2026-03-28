@@ -94,6 +94,29 @@ export default function Dashboard() {
     setTimeout(() => setCopied(""), 2000);
   };
 
+  const clearResponses = async () => {
+    if (!confirm(`Are you sure you want to clear all ${area} pickup responses for this week? This cannot be undone.`)) {
+      return;
+    }
+    setLoading(true);
+    setError("");
+    try {
+      const url = new URL("/api/clear-responses", window.location.origin);
+      url.searchParams.set("area", area);
+      const res = await fetch(url, { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Failed to clear");
+      alert(data.message);
+      // Reset displayed data
+      setPickupList(null);
+      setRemainingData(null);
+      setEmailLinks(null);
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
+  };
+
   // LOGIN SCREEN
   if (!authenticated) {
     return (
@@ -187,6 +210,19 @@ export default function Dashboard() {
           <div style={styles.cardActions}>
             <button onClick={loadRemainingEmails} style={styles.primaryBtn}>
               Get Remaining Emails
+            </button>
+          </div>
+        </div>
+
+        {/* CARD 4: Clear Week */}
+        <div style={styles.card}>
+          <h2 style={styles.cardTitle}>4. Reset for New Week</h2>
+          <p style={styles.cardDesc}>
+            Clear all {area} pickup responses for this week so you can start fresh.
+          </p>
+          <div style={styles.cardActions}>
+            <button onClick={clearResponses} style={styles.dangerBtn}>
+              Clear This Week&apos;s Responses
             </button>
           </div>
         </div>
@@ -424,6 +460,16 @@ const styles = {
   cardActions: { display: "flex", flexDirection: "column", gap: "8px" },
 
   // Buttons
+  dangerBtn: {
+    padding: "10px 20px",
+    background: "#dc3545",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "600",
+  },
   primaryBtn: {
     padding: "10px 20px",
     background: "#667eea",
