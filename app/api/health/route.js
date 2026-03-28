@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 
-// GET /api/health - Debug endpoint to verify env vars and Google connection
+// GET /api/health - Debug endpoint to verify env vars and Google connection (v2)
 export async function GET() {
   const key = process.env.GOOGLE_PRIVATE_KEY || "";
   const parsedKey = key.replace(/\\n/g, "\n").replace(/\\u003d/g, "=");
