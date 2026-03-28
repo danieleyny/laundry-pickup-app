@@ -15,6 +15,10 @@ function PickupForm() {
     downtown: { day1: "Tuesday", day2: "Thursday" },
   };
   const config = areaConfig[area] || areaConfig.uptown;
+  const dayParam = params.get("day"); // optional: restrict to single day
+  const showDay1 = !dayParam || dayParam.toLowerCase() === config.day1.toLowerCase();
+  const showDay2 = !dayParam || dayParam.toLowerCase() === config.day2.toLowerCase();
+  const singleDay = dayParam && (showDay1 !== showDay2);
 
   const handleConfirm = (day) => {
     const trimmed = email.trim().toLowerCase();
@@ -31,7 +35,7 @@ function PickupForm() {
     <div style={styles.container}>
       <div style={styles.card}>
         <h1 style={styles.title}>Laundry Pickup</h1>
-        <p style={styles.subtitle}>Confirm your pickup day</p>
+        <p style={styles.subtitle}>Confirm your pickup{singleDay ? "" : " day"}</p>
 
         <div style={styles.field}>
           <label style={styles.label}>Your email address:</label>
@@ -46,24 +50,40 @@ function PickupForm() {
 
         {error && <p style={styles.error}>{error}</p>}
 
-        <p style={styles.prompt}>Which day works for you?</p>
-
-        <div style={styles.buttons}>
-          <button
-            onClick={() => handleConfirm(config.day1)}
-            disabled={submitting}
-            style={styles.dayBtn1}
-          >
-            {submitting ? "..." : config.day1}
-          </button>
-          <button
-            onClick={() => handleConfirm(config.day2)}
-            disabled={submitting}
-            style={styles.dayBtn2}
-          >
-            {submitting ? "..." : config.day2}
-          </button>
-        </div>
+        {singleDay ? (
+          <>
+            <p style={styles.prompt}>Confirm pickup for {showDay1 ? config.day1 : config.day2}?</p>
+            <div style={styles.buttons}>
+              <button
+                onClick={() => handleConfirm(showDay1 ? config.day1 : config.day2)}
+                disabled={submitting}
+                style={styles.dayBtn1}
+              >
+                {submitting ? "..." : "Yes, Confirm"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <p style={styles.prompt}>Which day works for you?</p>
+            <div style={styles.buttons}>
+              <button
+                onClick={() => handleConfirm(config.day1)}
+                disabled={submitting}
+                style={styles.dayBtn1}
+              >
+                {submitting ? "..." : config.day1}
+              </button>
+              <button
+                onClick={() => handleConfirm(config.day2)}
+                disabled={submitting}
+                style={styles.dayBtn2}
+              >
+                {submitting ? "..." : config.day2}
+              </button>
+            </div>
+          </>
+        )}
 
         <p style={styles.note}>
           If you don&apos;t need a pickup this week, no action needed.

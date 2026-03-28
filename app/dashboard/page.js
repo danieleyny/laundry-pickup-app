@@ -14,6 +14,7 @@ export default function Dashboard() {
   const [emailLinks, setEmailLinks] = useState(null);
   const [responses, setResponses] = useState(null);
   const [copied, setCopied] = useState("");
+  const [emailType, setEmailType] = useState("full"); // "full" or "remaining"
 
   const areaConfig = {
     uptown: { day1: "Friday", day2: "Saturday" },
@@ -82,10 +83,29 @@ export default function Dashboard() {
         onlyRemaining: onlyRemaining.toString(),
       });
       setEmailLinks(data);
+      setEmailType(onlyRemaining ? "remaining" : "full");
     } catch (err) {
       setError(err.message);
     }
     setLoading(false);
+  };
+
+  const BASE_URL = "https://pickup.laundryday.nyc";
+
+  const getEmailSubject = () => {
+    if (emailType === "remaining") {
+      return "Reminder: Laundry Collection - (Today)";
+    }
+    if (area === "uptown") return "Reminder: Laundry Collection - (Fri & Sat)";
+    return "Reminder: Laundry Collection - (Tues & Thurs)";
+  };
+
+  const getEmailBody = () => {
+    if (emailType === "remaining") {
+      const todayDay = config.day2;
+      return `Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area Today, ${todayDay}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup, please click the link below and type in your email:\n\n${BASE_URL}/pickup?area=${area}&day=${todayDay}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`;
+    }
+    return `Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area on ${config.day1} & ${config.day2}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup, please click the link below and type in your email:\n\n${BASE_URL}/pickup?area=${area}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`;
   };
 
   const copyToClipboard = async (text, label) => {
@@ -275,7 +295,7 @@ export default function Dashboard() {
       {emailLinks && (
         <div style={s.resultSection}>
           <div style={s.resultHeader}>
-            <h2 style={s.resultTitle}>Ready to Send</h2>
+            <h2 style={s.resultTitle}>Ready to Send {emailType === "remaining" ? "(Remaining)" : ""}</h2>
             <span style={s.badge}>{emailLinks.totalCustomers} customers</span>
           </div>
 
@@ -295,22 +315,32 @@ export default function Dashboard() {
 
             <div style={s.stepCard}>
               <div style={s.stepNum}>2</div>
+              <h3 style={s.stepTitle}>Copy Email Subject</h3>
+              <p style={s.stepDesc}>Paste as your email subject line</p>
+              <button
+                onClick={() => copyToClipboard(getEmailSubject(), "subject")}
+                style={s.copyBtn}
+              >
+                {copied === "subject" ? "&#10003; Copied!" : "Copy Subject"}
+              </button>
+              <textarea readOnly value={getEmailSubject()} style={s.textarea} rows={1} />
+            </div>
+
+            <div style={s.stepCard}>
+              <div style={s.stepNum}>3</div>
               <h3 style={s.stepTitle}>Copy Email Body</h3>
               <p style={s.stepDesc}>Paste as your email message</p>
               <button
-                onClick={() => copyToClipboard(
-                  `Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area on ${emailLinks.config.day1} & ${emailLinks.config.day2}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup day, please click the link below and select your name and preferred day:\n\n${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/pickup?area=${area}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`,
-                  "body"
-                )}
+                onClick={() => copyToClipboard(getEmailBody(), "body")}
                 style={s.copyBtn}
               >
                 {copied === "body" ? "&#10003; Copied!" : "Copy Email Body"}
               </button>
               <textarea
                 readOnly
-                value={`Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area on ${emailLinks.config.day1} & ${emailLinks.config.day2}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup day, please click the link below and select your name and preferred day:\n\n${window.location.origin}/pickup?area=${area}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`}
+                value={getEmailBody()}
                 style={s.textarea}
-                rows={6}
+                rows={8}
               />
             </div>
           </div>
