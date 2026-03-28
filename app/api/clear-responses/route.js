@@ -7,7 +7,12 @@ import { google } from "googleapis";
 export async function POST(request) {
   const { searchParams } = new URL(request.url);
   const area = searchParams.get("area") || "uptown";
+  const pin = searchParams.get("pin");
   const week = searchParams.get("week") || getCurrentWeekId();
+
+  if (pin !== process.env.ADMIN_PIN) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const auth = new google.auth.GoogleAuth({

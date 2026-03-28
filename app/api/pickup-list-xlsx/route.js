@@ -6,7 +6,12 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const area = searchParams.get("area") || "uptown";
   const day = searchParams.get("day");
+  const pin = searchParams.get("pin");
   const week = searchParams.get("week") || getCurrentWeekId();
+
+  if (pin !== process.env.ADMIN_PIN) {
+    return new Response("Unauthorized", { status: 401 });
+  }
 
   if (!day) {
     return new Response("Missing day parameter", { status: 400 });

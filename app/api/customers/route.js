@@ -5,11 +5,10 @@ import { getCustomers, AREA_CONFIG } from "../../../lib/sheets";
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const area = searchParams.get("area") || "uptown";
-  // PIN auth temporarily disabled
-  // const pin = searchParams.get("pin");
-  // if (pin !== process.env.ADMIN_PIN) {
-  //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  // }
+  const pin = searchParams.get("pin");
+  if (pin !== process.env.ADMIN_PIN) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   try {
     const customers = await getCustomers(area);

@@ -8,11 +8,10 @@ export async function GET(request) {
   const day = searchParams.get("day");
   const week = searchParams.get("week") || getCurrentWeekId();
 
-  // PIN auth temporarily disabled
-  // const pin = searchParams.get("pin");
-  // if (pin !== process.env.ADMIN_PIN) {
-  //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  // }
+  const pin = searchParams.get("pin");
+  if (pin !== process.env.ADMIN_PIN) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   if (!day) {
     return NextResponse.json({ error: "Missing day parameter" }, { status: 400 });

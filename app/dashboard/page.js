@@ -2,8 +2,8 @@
 import { useState, useCallback } from "react";
 
 export default function Dashboard() {
-  const [pin, setPin] = useState("bypass");
-  const [authenticated, setAuthenticated] = useState(true);
+  const [pin, setPin] = useState("");
+  const [authenticated, setAuthenticated] = useState(false);
   const [area, setArea] = useState("uptown");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -103,6 +103,7 @@ export default function Dashboard() {
     try {
       const url = new URL("/api/clear-responses", window.location.origin);
       url.searchParams.set("area", area);
+      url.searchParams.set("pin", pin);
       const res = await fetch(url, { method: "POST" });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to clear");
@@ -299,7 +300,7 @@ export default function Dashboard() {
               <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
                 <button
                   onClick={() => {
-                    window.open(`/api/pickup-list-xlsx?area=${pickupList.area}&day=${pickupList.day}`, "_blank");
+                    window.open(`/api/pickup-list-xlsx?area=${pickupList.area}&day=${pickupList.day}&pin=${pin}`, "_blank");
                   }}
                   style={styles.primaryBtn}
                 >
