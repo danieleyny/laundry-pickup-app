@@ -200,16 +200,15 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* CARD 3: Remaining Emails */}
+        {/* CARD 3: Weekly Status */}
         <div style={styles.card}>
-          <h2 style={styles.cardTitle}>3. Get Remaining Emails</h2>
+          <h2 style={styles.cardTitle}>3. Weekly Status</h2>
           <p style={styles.cardDesc}>
-            Copy emails of customers who haven&apos;t confirmed yet — ready to
-            paste into Gmail BCC for a follow-up.
+            See how many customers confirmed vs. still need to reply this week.
           </p>
           <div style={styles.cardActions}>
             <button onClick={loadRemainingEmails} style={styles.primaryBtn}>
-              Get Remaining Emails
+              Check Status
             </button>
           </div>
         </div>
@@ -333,35 +332,45 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Remaining Emails Results */}
+      {/* Weekly Status Results */}
       {remainingData && (
         <div style={styles.resultSection}>
-          <h2 style={styles.resultTitle}>
-            Remaining Customers — {remainingData.totalRemaining} of{" "}
-            {remainingData.totalCustomers}
-          </h2>
-          <p style={{ color: "#666", margin: "0 0 16px" }}>
-            {remainingData.totalConfirmed} customer(s) already confirmed this week.
-            {remainingData.totalRemaining} still haven&apos;t replied.
-          </p>
-          <div style={styles.resultBox}>
-            <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
-              <button
-                onClick={() =>
-                  copyToClipboard(remainingData.emailString, "remaining")
-                }
-                style={styles.primaryBtn}
-              >
-                {copied === "remaining" ? "Copied!" : "Copy All Remaining Emails"}
-              </button>
+          <h2 style={styles.resultTitle}>Weekly Status</h2>
+          <div style={{ display: "flex", gap: "16px", marginBottom: "20px", flexWrap: "wrap" }}>
+            <div style={{ ...styles.resultBox, flex: 1, textAlign: "center", minWidth: "140px" }}>
+              <div style={{ fontSize: "36px", fontWeight: "700", color: "#28a745" }}>{remainingData.totalConfirmed}</div>
+              <div style={{ fontSize: "14px", color: "#666" }}>Confirmed</div>
             </div>
-            <textarea
-              readOnly
-              value={remainingData.emailString}
-              style={styles.emailTextarea}
-              rows={4}
-            />
+            <div style={{ ...styles.resultBox, flex: 1, textAlign: "center", minWidth: "140px" }}>
+              <div style={{ fontSize: "36px", fontWeight: "700", color: "#dc3545" }}>{remainingData.totalRemaining}</div>
+              <div style={{ fontSize: "14px", color: "#666" }}>No Reply Yet</div>
+            </div>
+            <div style={{ ...styles.resultBox, flex: 1, textAlign: "center", minWidth: "140px" }}>
+              <div style={{ fontSize: "36px", fontWeight: "700", color: "#667eea" }}>{remainingData.totalCustomers}</div>
+              <div style={{ fontSize: "14px", color: "#666" }}>Total Customers</div>
+            </div>
           </div>
+          {remainingData.totalRemaining > 0 && (
+            <div style={styles.resultBox}>
+              <h3 style={{ margin: "0 0 8px" }}>Remaining Emails (for follow-up BCC)</h3>
+              <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+                <button
+                  onClick={() =>
+                    copyToClipboard(remainingData.emailString, "remaining")
+                  }
+                  style={styles.copyBtn}
+                >
+                  {copied === "remaining" ? "Copied!" : `Copy ${remainingData.totalRemaining} Remaining Emails`}
+                </button>
+              </div>
+              <textarea
+                readOnly
+                value={remainingData.emailString}
+                style={styles.emailTextarea}
+                rows={3}
+              />
+            </div>
+          )}
         </div>
       )}
     </div>
