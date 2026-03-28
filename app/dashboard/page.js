@@ -296,28 +296,16 @@ export default function Dashboard() {
             <p style={{ color: "#666" }}>No confirmations yet for {pickupList.day}.</p>
           ) : (
             <>
-              <button
-                onClick={() => {
-                  const typeHeader = pickupList.isCombined ? `<th style="border:1px solid #ddd;padding:8px;text-align:left">Type</th>` : "";
-                  const rows = pickupList.pickupList
-                    .map((p) => {
-                      const bgColor = p.type === "pickup" ? "#d4edda" : p.type === "dropoff" ? "#f8d7da" : "white";
-                      const typeCell = pickupList.isCombined
-                        ? `<td style="border:1px solid #ddd;padding:8px;background:${bgColor};font-weight:bold">${p.type === "pickup" ? "PICK UP" : "DROP OFF"}</td>`
-                        : "";
-                      return `<tr style="background:${bgColor}"><td style="border:1px solid #ddd;padding:8px">${p.address}</td><td style="border:1px solid #ddd;padding:8px">${p.unit}</td><td style="border:1px solid #ddd;padding:8px">${p.entryMethod}</td><td style="border:1px solid #ddd;padding:8px">${p.name}</td>${typeCell}</tr>`;
-                    })
-                    .join("");
-                  const html = `<html><head><title>${pickupList.day} Route</title></head><body style="font-family:Arial,sans-serif"><h1>${pickupList.day} Route — ${pickupList.area}</h1><p>${new Date().toLocaleDateString()}${pickupList.isCombined ? ` | ${pickupList.totalDropoffs} drop-offs + ${pickupList.totalPickups} pickups` : ""}</p>${pickupList.isCombined ? '<p><span style="background:#d4edda;padding:2px 8px;border-radius:4px;font-weight:bold">GREEN = PICK UP</span> &nbsp; <span style="background:#f8d7da;padding:2px 8px;border-radius:4px;font-weight:bold">RED = DROP OFF</span></p>' : ""}<table style="border-collapse:collapse;width:100%"><tr style="background:#f0f0f0"><th style="border:1px solid #ddd;padding:8px;text-align:left">Address</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Unit</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Entry Method</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Customer</th>${typeHeader}</tr>${rows}</table></body></html>`;
-                  const w = window.open();
-                  w.document.write(html);
-                  w.document.close();
-                  w.print();
-                }}
-                style={styles.primaryBtn}
-              >
-                Print / Save as PDF
-              </button>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+                <button
+                  onClick={() => {
+                    window.open(`/api/pickup-list-xlsx?area=${pickupList.area}&day=${pickupList.day}`, "_blank");
+                  }}
+                  style={styles.primaryBtn}
+                >
+                  Download Excel File
+                </button>
+              </div>
 
               {pickupList.isCombined && (
                 <div style={{ display: "flex", gap: "12px", margin: "12px 0", fontSize: "14px", fontWeight: "600" }}>
@@ -331,7 +319,6 @@ export default function Dashboard() {
                   <div style={{ flex: 2 }}>Address</div>
                   <div style={{ flex: 1 }}>Unit</div>
                   <div style={{ flex: 2 }}>Entry Method</div>
-                  <div style={{ flex: 2 }}>Customer</div>
                   {pickupList.isCombined && <div style={{ flex: 1 }}>Type</div>}
                 </div>
                 {pickupList.pickupList.map((p, i) => {
@@ -341,7 +328,6 @@ export default function Dashboard() {
                       <div style={{ flex: 2 }}>{p.address}</div>
                       <div style={{ flex: 1 }}>{p.unit}</div>
                       <div style={{ flex: 2, fontSize: "13px" }}>{p.entryMethod}</div>
-                      <div style={{ flex: 2 }}>{p.name}</div>
                       {pickupList.isCombined && (
                         <div style={{ flex: 1, fontWeight: "700", color: p.type === "pickup" ? "#155724" : "#721c24" }}>
                           {p.type === "pickup" ? "PICK UP" : "DROP OFF"}
