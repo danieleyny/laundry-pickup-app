@@ -145,19 +145,18 @@ export default function Dashboard() {
 
       {/* Action Cards */}
       <div style={styles.grid}>
-        {/* CARD 1: Send Initial Reminder */}
+        {/* CARD 1: Send Bulk Reminder */}
         <div style={styles.card}>
           <h2 style={styles.cardTitle}>1. Send Pickup Reminders</h2>
           <p style={styles.cardDesc}>
-            Generate personalized email links for all {area} customers.
-            Each customer gets unique {config.day1}/{config.day2} buttons.
+            Copy all {area} customer emails for BCC, plus your reminder email with the pickup link.
           </p>
           <div style={styles.cardActions}>
             <button onClick={() => loadEmailLinks(false)} style={styles.primaryBtn}>
-              Generate Links (All Customers)
+              Get Email &amp; BCC List
             </button>
             <button onClick={() => loadEmailLinks(true)} style={styles.secondaryBtn}>
-              Generate Links (Remaining Only)
+              Remaining Customers Only
             </button>
           </div>
         </div>
@@ -195,75 +194,54 @@ export default function Dashboard() {
 
       {/* RESULTS SECTIONS */}
 
-      {/* Email Links Results */}
+      {/* Bulk Email Results */}
       {emailLinks && (
         <div style={styles.resultSection}>
           <h2 style={styles.resultTitle}>
-            Email Links — {emailLinks.totalCustomers} customers
+            Ready to Send — {emailLinks.totalCustomers} customers
           </h2>
-          <p style={styles.resultNote}>
-            Since each customer needs unique links, you have two options:
-          </p>
 
-          {/* Option A: Copy BCC list + generic email */}
+          {/* Step 1: Copy BCC emails */}
           <div style={styles.resultBox}>
-            <h3 style={{ margin: "0 0 8px" }}>Option A: Quick BCC Email (no buttons, reply-based)</h3>
+            <h3 style={{ margin: "0 0 8px" }}>Step 1: Copy BCC Emails</h3>
             <p style={{ margin: "0 0 12px", color: "#666", fontSize: "14px" }}>
-              BCC all customers with a simple email asking them to click their personalized link
-              (you&apos;d need to send individually for unique links).
+              Paste these into Gmail BCC field.
             </p>
             <button
               onClick={() => copyToClipboard(emailLinks.bccEmails, "bcc")}
               style={styles.copyBtn}
             >
-              {copied === "bcc" ? "Copied!" : "Copy All Email Addresses"}
+              {copied === "bcc" ? "Copied!" : `Copy All ${emailLinks.totalCustomers} Email Addresses`}
             </button>
+            <textarea
+              readOnly
+              value={emailLinks.bccEmails}
+              style={{ ...styles.emailTextarea, marginTop: "12px" }}
+              rows={3}
+            />
           </div>
 
-          {/* Option B: Individual mailto links */}
+          {/* Step 2: Copy email body */}
           <div style={styles.resultBox}>
-            <h3 style={{ margin: "0 0 8px" }}>Option B: Individual Emails with Buttons (Recommended)</h3>
+            <h3 style={{ margin: "0 0 8px" }}>Step 2: Copy Email Body</h3>
             <p style={{ margin: "0 0 12px", color: "#666", fontSize: "14px" }}>
-              Click &quot;Copy Email&quot; next to each customer to compose a personalized email.
+              Paste this as your email message. It includes the pickup confirmation link.
             </p>
-            <div style={styles.table}>
-              <div style={{ ...styles.tableRow, fontWeight: "bold", background: "#f0f0f0" }}>
-                <div style={{ flex: 2 }}>Customer</div>
-                <div style={{ flex: 3 }}>Email</div>
-                <div style={{ flex: 2 }}>Actions</div>
-              </div>
-              {emailLinks.customerLinks.map((c, i) => (
-                <div key={i} style={styles.tableRow}>
-                  <div style={{ flex: 2 }}>{c.name}</div>
-                  <div style={{ flex: 3, fontSize: "13px", wordBreak: "break-all" }}>{c.emails.join(", ")}</div>
-                  <div style={{ flex: 2, display: "flex", gap: "4px", flexWrap: "wrap" }}>
-                    <button
-                      onClick={() => {
-                        const subject = encodeURIComponent("Laundry Pickup This Week");
-                        const body = encodeURIComponent(
-                          `Hi ${c.name.split(",")[0].trim()}!\n\nWould you like a laundry pickup this week? Just tap the day that works:\n\n${c.day1}: ${c.day1Link}\n\n${c.day2}: ${c.day2Link}\n\nIf you don't need a pickup, no action needed.\n\nThanks!`
-                        );
-                        window.open(`mailto:${c.emails.join(",")}?subject=${subject}&body=${body}`);
-                      }}
-                      style={styles.smallBtn}
-                    >
-                      Open in Gmail
-                    </button>
-                    <button
-                      onClick={() =>
-                        copyToClipboard(
-                          `Hi ${c.name.split(",")[0].trim()}!\n\nWould you like a laundry pickup this week? Just tap the day that works:\n\n${c.day1}: ${c.day1Link}\n\n${c.day2}: ${c.day2Link}\n\nIf you don't need a pickup, no action needed.\n\nThanks!`,
-                          `msg-${i}`
-                        )
-                      }
-                      style={styles.smallBtn}
-                    >
-                      {copied === `msg-${i}` ? "Copied!" : "Copy Message"}
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <button
+              onClick={() => copyToClipboard(
+                `Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area on ${emailLinks.config.day1} & ${emailLinks.config.day2}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup day, please click the link below and select your name and preferred day:\n\n${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/pickup?area=${area}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`,
+                "body"
+              )}
+              style={styles.copyBtn}
+            >
+              {copied === "body" ? "Copied!" : "Copy Email Body"}
+            </button>
+            <textarea
+              readOnly
+              value={`Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area on ${emailLinks.config.day1} & ${emailLinks.config.day2}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup day, please click the link below and select your name and preferred day:\n\n${window.location.origin}/pickup?area=${area}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`}
+              style={{ ...styles.emailTextarea, marginTop: "12px" }}
+              rows={8}
+            />
           </div>
         </div>
       )}
