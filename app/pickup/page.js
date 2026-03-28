@@ -1,82 +1,47 @@
 "use client";
-import { useState, useEffect, Suspense } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 
 function PickupForm() {
   const params = useSearchParams();
   const area = params.get("area") || "uptown";
 
-  const [customers, setCustomers] = useState([]);
-  const [selectedEmail, setSelectedEmail] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
 
   const areaConfig = {
-    uptown: { day1: "Friday", day2: "Saturday", label: "Uptown" },
-    downtown: { day1: "Tuesday", day2: "Thursday", label: "Downtown" },
+    uptown: { day1: "Friday", day2: "Saturday" },
+    downtown: { day1: "Tuesday", day2: "Thursday" },
   };
   const config = areaConfig[area] || areaConfig.uptown;
 
-  useEffect(() => {
-    fetch(`/api/customers?area=${area}`)
-      .then((r) => r.json())
-      .then((data) => {
-        setCustomers(data.customers || []);
-        setLoading(false);
-      })
-      .catch(() => {
-        setError("Unable to load customer list. Please try again.");
-        setLoading(false);
-      });
-  }, [area]);
-
-  const handleConfirm = async (day) => {
-    if (!selectedEmail) {
-      setError("Please select your name first.");
+  const handleConfirm = (day) => {
+    const trimmed = email.trim().toLowerCase();
+    if (!trimmed || !trimmed.includes("@")) {
+      setError("Please enter your email address.");
       return;
     }
     setSubmitting(true);
     setError("");
-    try {
-      const url = `/api/confirm?email=${encodeURIComponent(selectedEmail)}&day=${day}&area=${area}`;
-      window.location.href = url;
-    } catch {
-      setError("Something went wrong. Please try again.");
-      setSubmitting(false);
-    }
+    window.location.href = `/api/confirm?email=${encodeURIComponent(trimmed)}&day=${day}&area=${area}`;
   };
-
-  if (loading) {
-    return (
-      <div style={styles.container}>
-        <div style={styles.card}>
-          <p style={styles.message}>Loading...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div style={styles.container}>
       <div style={styles.card}>
         <h1 style={styles.title}>Laundry Pickup</h1>
-        <p style={styles.subtitle}>Schedule your {config.label} pickup</p>
+        <p style={styles.subtitle}>Confirm your pickup day</p>
 
         <div style={styles.field}>
-          <label style={styles.label}>Select your name:</label>
-          <select
-            value={selectedEmail}
-            onChange={(e) => { setSelectedEmail(e.target.value); setError(""); }}
-            style={styles.select}
-          >
-            <option value="">-- Choose your name --</option>
-            {customers.map((c, i) => (
-              <option key={i} value={c.emails[0]}>
-                {c.name}
-              </option>
-            ))}
-          </select>
+          <label style={styles.label}>Your email address:</label>
+          <input
+            type="email"
+            value={email}
+            onChange={(e) => { setEmail(e.target.value); setError(""); }}
+            placeholder="you@email.com"
+            style={styles.input}
+          />
         </div>
 
         {error && <p style={styles.error}>{error}</p>}
@@ -89,14 +54,14 @@ function PickupForm() {
             disabled={submitting}
             style={styles.dayBtn1}
           >
-            {config.day1}
+            {submitting ? "..." : config.day1}
           </button>
           <button
             onClick={() => handleConfirm(config.day2)}
             disabled={submitting}
             style={styles.dayBtn2}
           >
-            {config.day2}
+            {submitting ? "..." : config.day2}
           </button>
         </div>
 
@@ -114,7 +79,7 @@ export default function PickupPage() {
       fallback={
         <div style={styles.container}>
           <div style={styles.card}>
-            <p style={styles.message}>Loading...</p>
+            <p style={{ fontSize: "16px", color: "#444" }}>Loading...</p>
           </div>
         </div>
       }
@@ -163,14 +128,12 @@ const styles = {
     color: "#333",
     marginBottom: "8px",
   },
-  select: {
+  input: {
     width: "100%",
     padding: "12px 14px",
     fontSize: "16px",
     border: "2px solid #ddd",
     borderRadius: "8px",
-    background: "white",
-    cursor: "pointer",
     boxSizing: "border-box",
   },
   prompt: {
@@ -215,9 +178,5 @@ const styles = {
     color: "#dc3545",
     fontSize: "14px",
     margin: "0 0 16px",
-  },
-  message: {
-    fontSize: "16px",
-    color: "#444",
   },
 };
