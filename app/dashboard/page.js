@@ -108,7 +108,6 @@ export default function Dashboard() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Failed to clear");
       alert(data.message);
-      // Reset displayed data
       setPickupList(null);
       setRemainingData(null);
       setEmailLinks(null);
@@ -118,25 +117,37 @@ export default function Dashboard() {
     setLoading(false);
   };
 
+  // Card icon components
+  const icons = {
+    email: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>,
+    truck: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>,
+    chart: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>,
+    refresh: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>,
+  };
+
   // LOGIN SCREEN
   if (!authenticated) {
     return (
-      <div style={styles.loginContainer}>
-        <div style={styles.loginCard}>
-          <h1 style={styles.loginTitle}>Laundry Pickup Manager</h1>
-          <p style={styles.loginSub}>Enter your admin PIN to continue</p>
+      <div style={s.loginBg}>
+        <div style={s.loginCard}>
+          <div style={s.loginIcon}>
+            <svg width="32" height="32" fill="none" stroke="#667eea" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+          </div>
+          <h1 style={s.loginTitle}>Laundry Day NYC</h1>
+          <p style={s.loginSub}>Enter your PIN to access the dashboard</p>
           <input
             type="password"
             value={pin}
             onChange={(e) => setPin(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleLogin()}
-            placeholder="Enter PIN"
-            style={styles.pinInput}
+            placeholder="****"
+            style={s.pinInput}
+            autoFocus
           />
-          <button onClick={handleLogin} disabled={loading} style={styles.loginBtn}>
-            {loading ? "Checking..." : "Log In"}
+          <button onClick={handleLogin} disabled={loading} style={s.loginBtn}>
+            {loading ? "Verifying..." : "Unlock Dashboard"}
           </button>
-          {error && <p style={styles.error}>{error}</p>}
+          {error && <p style={s.loginError}>{error}</p>}
         </div>
       </div>
     );
@@ -144,194 +155,226 @@ export default function Dashboard() {
 
   // MAIN DASHBOARD
   return (
-    <div style={styles.page}>
+    <div style={s.page}>
       {/* Header */}
-      <div style={styles.header}>
-        <h1 style={styles.headerTitle}>Laundry Pickup Manager</h1>
-        <div style={styles.areaToggle}>
+      <div style={s.header}>
+        <div style={s.headerLeft}>
+          <div style={s.logoMark}>LD</div>
+          <div>
+            <h1 style={s.headerTitle}>Laundry Day NYC</h1>
+            <p style={s.headerSub}>Pickup Management Dashboard</p>
+          </div>
+        </div>
+        <div style={s.areaToggle}>
           <button
             onClick={() => { setArea("uptown"); setPickupList(null); setRemainingData(null); setEmailLinks(null); }}
-            style={area === "uptown" ? styles.areaActive : styles.areaBtn}
+            style={area === "uptown" ? s.areaActive : s.areaBtn}
           >
-            Uptown (Fri/Sat)
+            Uptown
+            <span style={s.areaDays}>{area === "uptown" ? "Fri / Sat" : "Fri / Sat"}</span>
           </button>
           <button
             onClick={() => { setArea("downtown"); setPickupList(null); setRemainingData(null); setEmailLinks(null); }}
-            style={area === "downtown" ? styles.areaActive : styles.areaBtn}
+            style={area === "downtown" ? s.areaActive : s.areaBtn}
           >
-            Downtown (Tue/Thu)
+            Downtown
+            <span style={s.areaDays}>{area === "downtown" ? "Tue / Thu" : "Tue / Thu"}</span>
           </button>
         </div>
       </div>
 
-      {error && <div style={styles.errorBanner}>{error}</div>}
-      {loading && <div style={styles.loadingBanner}>Loading...</div>}
+      {error && (
+        <div style={s.errorBanner}>
+          <span style={{ marginRight: "8px" }}>&#9888;</span> {error}
+          <button onClick={() => setError("")} style={s.dismissBtn}>&#10005;</button>
+        </div>
+      )}
+      {loading && (
+        <div style={s.loadingBanner}>
+          <span style={s.spinner} /> Loading...
+        </div>
+      )}
 
       {/* Action Cards */}
-      <div style={styles.grid}>
-        {/* CARD 1: Send Bulk Reminder */}
-        <div style={styles.card}>
-          <h2 style={styles.cardTitle}>1. Send Pickup Reminders</h2>
-          <p style={styles.cardDesc}>
-            Copy all {area} customer emails for BCC, plus your reminder email with the pickup link.
-          </p>
-          <div style={styles.cardActions}>
-            <button onClick={() => loadEmailLinks(false)} style={styles.primaryBtn}>
-              Get Email &amp; BCC List
-            </button>
-            <button onClick={() => loadEmailLinks(true)} style={styles.secondaryBtn}>
-              Remaining Customers Only
-            </button>
+      <div style={s.grid}>
+        {[
+          {
+            icon: icons.email,
+            num: "1",
+            title: "Send Pickup Reminders",
+            desc: `Copy all ${area} customer emails for BCC, plus your reminder email with the pickup link.`,
+            color: "#667eea",
+            actions: (
+              <>
+                <button onClick={() => loadEmailLinks(false)} style={{ ...s.cardBtn, background: "#667eea" }}>
+                  Get Email &amp; BCC List
+                </button>
+                <button onClick={() => loadEmailLinks(true)} style={s.cardBtnOutline}>
+                  Remaining Customers Only
+                </button>
+              </>
+            ),
+          },
+          {
+            icon: icons.truck,
+            num: "2",
+            title: "View Pickup List",
+            desc: "See who confirmed and generate the driver's route-sorted pickup list.",
+            color: "#11998e",
+            actions: (
+              <>
+                <button onClick={() => loadPickupList(config.day1)} style={{ ...s.cardBtn, background: "#11998e" }}>
+                  {config.day1} Pickup List
+                </button>
+                <button onClick={() => loadPickupList(config.day2)} style={{ ...s.cardBtnOutline, color: "#11998e", borderColor: "#11998e" }}>
+                  {config.day2} Pickup List
+                </button>
+              </>
+            ),
+          },
+          {
+            icon: icons.chart,
+            num: "3",
+            title: "Weekly Status",
+            desc: "See how many customers confirmed vs. still need to reply this week.",
+            color: "#f7971e",
+            actions: (
+              <button onClick={loadRemainingEmails} style={{ ...s.cardBtn, background: "linear-gradient(135deg, #f7971e, #ffd200)" }}>
+                Check Status
+              </button>
+            ),
+          },
+          {
+            icon: icons.refresh,
+            num: "4",
+            title: "Reset for New Week",
+            desc: `Clear all ${area} pickup responses for this week so you can start fresh.`,
+            color: "#dc3545",
+            actions: (
+              <button onClick={clearResponses} style={{ ...s.cardBtn, background: "#dc3545" }}>
+                Clear This Week&apos;s Responses
+              </button>
+            ),
+          },
+        ].map((card, i) => (
+          <div key={i} style={s.card}>
+            <div style={{ ...s.cardIconWrap, background: `${card.color}15`, color: card.color }}>
+              {card.icon}
+            </div>
+            <div style={s.cardNum}>Step {card.num}</div>
+            <h2 style={s.cardTitle}>{card.title}</h2>
+            <p style={s.cardDesc}>{card.desc}</p>
+            <div style={s.cardActions}>{card.actions}</div>
           </div>
-        </div>
-
-        {/* CARD 2: View Pickup List */}
-        <div style={styles.card}>
-          <h2 style={styles.cardTitle}>2. View Pickup List</h2>
-          <p style={styles.cardDesc}>
-            See who confirmed and generate the driver&apos;s route-sorted pickup list.
-          </p>
-          <div style={styles.cardActions}>
-            <button onClick={() => loadPickupList(config.day1)} style={styles.primaryBtn}>
-              {config.day1} Pickup List
-            </button>
-            <button onClick={() => loadPickupList(config.day2)} style={styles.secondaryBtn}>
-              {config.day2} Pickup List
-            </button>
-          </div>
-        </div>
-
-        {/* CARD 3: Weekly Status */}
-        <div style={styles.card}>
-          <h2 style={styles.cardTitle}>3. Weekly Status</h2>
-          <p style={styles.cardDesc}>
-            See how many customers confirmed vs. still need to reply this week.
-          </p>
-          <div style={styles.cardActions}>
-            <button onClick={loadRemainingEmails} style={styles.primaryBtn}>
-              Check Status
-            </button>
-          </div>
-        </div>
-
-        {/* CARD 4: Clear Week */}
-        <div style={styles.card}>
-          <h2 style={styles.cardTitle}>4. Reset for New Week</h2>
-          <p style={styles.cardDesc}>
-            Clear all {area} pickup responses for this week so you can start fresh.
-          </p>
-          <div style={styles.cardActions}>
-            <button onClick={clearResponses} style={styles.dangerBtn}>
-              Clear This Week&apos;s Responses
-            </button>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* RESULTS SECTIONS */}
+      {/* ── RESULTS SECTIONS ── */}
 
       {/* Bulk Email Results */}
       {emailLinks && (
-        <div style={styles.resultSection}>
-          <h2 style={styles.resultTitle}>
-            Ready to Send — {emailLinks.totalCustomers} customers
-          </h2>
-
-          {/* Step 1: Copy BCC emails */}
-          <div style={styles.resultBox}>
-            <h3 style={{ margin: "0 0 8px" }}>Step 1: Copy BCC Emails</h3>
-            <p style={{ margin: "0 0 12px", color: "#666", fontSize: "14px" }}>
-              Paste these into Gmail BCC field.
-            </p>
-            <button
-              onClick={() => copyToClipboard(emailLinks.bccEmails, "bcc")}
-              style={styles.copyBtn}
-            >
-              {copied === "bcc" ? "Copied!" : `Copy All ${emailLinks.totalCustomers} Email Addresses`}
-            </button>
-            <textarea
-              readOnly
-              value={emailLinks.bccEmails}
-              style={{ ...styles.emailTextarea, marginTop: "12px" }}
-              rows={3}
-            />
+        <div style={s.resultSection}>
+          <div style={s.resultHeader}>
+            <h2 style={s.resultTitle}>Ready to Send</h2>
+            <span style={s.badge}>{emailLinks.totalCustomers} customers</span>
           </div>
 
-          {/* Step 2: Copy email body */}
-          <div style={styles.resultBox}>
-            <h3 style={{ margin: "0 0 8px" }}>Step 2: Copy Email Body</h3>
-            <p style={{ margin: "0 0 12px", color: "#666", fontSize: "14px" }}>
-              Paste this as your email message. It includes the pickup confirmation link.
-            </p>
-            <button
-              onClick={() => copyToClipboard(
-                `Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area on ${emailLinks.config.day1} & ${emailLinks.config.day2}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup day, please click the link below and select your name and preferred day:\n\n${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/pickup?area=${area}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`,
-                "body"
-              )}
-              style={styles.copyBtn}
-            >
-              {copied === "body" ? "Copied!" : "Copy Email Body"}
-            </button>
-            <textarea
-              readOnly
-              value={`Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area on ${emailLinks.config.day1} & ${emailLinks.config.day2}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup day, please click the link below and select your name and preferred day:\n\n${window.location.origin}/pickup?area=${area}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`}
-              style={{ ...styles.emailTextarea, marginTop: "12px" }}
-              rows={8}
-            />
+          <div style={s.stepsRow}>
+            <div style={s.stepCard}>
+              <div style={s.stepNum}>1</div>
+              <h3 style={s.stepTitle}>Copy BCC Emails</h3>
+              <p style={s.stepDesc}>Paste into Gmail BCC field</p>
+              <button
+                onClick={() => copyToClipboard(emailLinks.bccEmails, "bcc")}
+                style={s.copyBtn}
+              >
+                {copied === "bcc" ? "&#10003; Copied!" : `Copy ${emailLinks.totalCustomers} Emails`}
+              </button>
+              <textarea readOnly value={emailLinks.bccEmails} style={s.textarea} rows={3} />
+            </div>
+
+            <div style={s.stepCard}>
+              <div style={s.stepNum}>2</div>
+              <h3 style={s.stepTitle}>Copy Email Body</h3>
+              <p style={s.stepDesc}>Paste as your email message</p>
+              <button
+                onClick={() => copyToClipboard(
+                  `Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area on ${emailLinks.config.day1} & ${emailLinks.config.day2}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup day, please click the link below and select your name and preferred day:\n\n${process.env.NEXT_PUBLIC_APP_URL || window.location.origin}/pickup?area=${area}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`,
+                  "body"
+                )}
+                style={s.copyBtn}
+              >
+                {copied === "body" ? "&#10003; Copied!" : "Copy Email Body"}
+              </button>
+              <textarea
+                readOnly
+                value={`Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area on ${emailLinks.config.day1} & ${emailLinks.config.day2}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup day, please click the link below and select your name and preferred day:\n\n${window.location.origin}/pickup?area=${area}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`}
+                style={s.textarea}
+                rows={6}
+              />
+            </div>
           </div>
         </div>
       )}
 
       {/* Pickup List Results */}
       {pickupList && (
-        <div style={styles.resultSection}>
-          <h2 style={styles.resultTitle}>
-            {pickupList.day} {pickupList.isCombined ? "Route" : "Pickup List"} — {pickupList.totalConfirmed} stops
-          </h2>
+        <div style={s.resultSection}>
+          <div style={s.resultHeader}>
+            <h2 style={s.resultTitle}>
+              {pickupList.day} {pickupList.isCombined ? "Route" : "Pickup List"}
+            </h2>
+            <span style={s.badge}>{pickupList.totalConfirmed} stops</span>
+          </div>
           {pickupList.isCombined && (
-            <p style={{ color: "#666", margin: "0 0 16px", fontSize: "14px" }}>
-              Combined list: {pickupList.totalDropoffs} drop-off(s) from {pickupList.day1} + {pickupList.totalPickups} pickup(s) for {pickupList.day}
+            <p style={s.resultSub}>
+              {pickupList.totalDropoffs} drop-off(s) from {pickupList.day1} &nbsp;+&nbsp; {pickupList.totalPickups} pickup(s) for {pickupList.day}
             </p>
           )}
           {pickupList.pickupList.length === 0 ? (
-            <p style={{ color: "#666" }}>No confirmations yet for {pickupList.day}.</p>
+            <div style={s.emptyState}>
+              <p>No confirmations yet for {pickupList.day}.</p>
+            </div>
           ) : (
             <>
-              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap" }}>
+              <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginBottom: "16px" }}>
                 <button
                   onClick={() => {
                     window.open(`/api/pickup-list-xlsx?area=${pickupList.area}&day=${pickupList.day}&pin=${pin}`, "_blank");
                   }}
-                  style={styles.primaryBtn}
+                  style={{ ...s.cardBtn, background: "#11998e", padding: "10px 24px" }}
                 >
-                  Download Excel File
+                  <span style={{ marginRight: "6px" }}>&#8615;</span> Download Excel
                 </button>
+                {pickupList.isCombined && (
+                  <>
+                    <span style={s.legendTag.pickup}>PICK UP</span>
+                    <span style={s.legendTag.dropoff}>DROP OFF</span>
+                  </>
+                )}
               </div>
 
-              {pickupList.isCombined && (
-                <div style={{ display: "flex", gap: "12px", margin: "12px 0", fontSize: "14px", fontWeight: "600" }}>
-                  <span style={{ background: "#d4edda", padding: "4px 12px", borderRadius: "6px", color: "#155724" }}>GREEN = PICK UP</span>
-                  <span style={{ background: "#f8d7da", padding: "4px 12px", borderRadius: "6px", color: "#721c24" }}>RED = DROP OFF</span>
-                </div>
-              )}
-
-              <div style={{ ...styles.table, marginTop: "16px" }}>
-                <div style={{ ...styles.tableRow, fontWeight: "bold", background: "#f0f0f0" }}>
-                  <div style={{ flex: 2 }}>Address</div>
+              <div style={s.table}>
+                <div style={s.tableHeader}>
+                  <div style={{ flex: 3 }}>Address</div>
                   <div style={{ flex: 1 }}>Unit</div>
-                  <div style={{ flex: 2 }}>Entry Method</div>
-                  {pickupList.isCombined && <div style={{ flex: 1 }}>Type</div>}
+                  <div style={{ flex: 3 }}>Entry Method</div>
+                  {pickupList.isCombined && <div style={{ flex: 1.5 }}>Type</div>}
                 </div>
                 {pickupList.pickupList.map((p, i) => {
-                  const rowBg = p.type === "pickup" ? "#d4edda" : p.type === "dropoff" ? "#f8d7da" : "white";
+                  const isPickup = p.type === "pickup";
+                  const isDropoff = p.type === "dropoff";
+                  const rowBg = isPickup ? "#e8f5e9" : isDropoff ? "#ffebee" : (i % 2 === 0 ? "#fff" : "#fafafa");
                   return (
-                    <div key={i} style={{ ...styles.tableRow, background: rowBg }}>
-                      <div style={{ flex: 2 }}>{p.address}</div>
+                    <div key={i} style={{ ...s.tableRow, background: rowBg }}>
+                      <div style={{ flex: 3, fontWeight: "500" }}>{p.address}</div>
                       <div style={{ flex: 1 }}>{p.unit}</div>
-                      <div style={{ flex: 2, fontSize: "13px" }}>{p.entryMethod}</div>
+                      <div style={{ flex: 3, color: "#555" }}>{p.entryMethod}</div>
                       {pickupList.isCombined && (
-                        <div style={{ flex: 1, fontWeight: "700", color: p.type === "pickup" ? "#155724" : "#721c24" }}>
-                          {p.type === "pickup" ? "PICK UP" : "DROP OFF"}
+                        <div style={{ flex: 1.5 }}>
+                          <span style={isPickup ? s.typeBadge.pickup : s.typeBadge.dropoff}>
+                            {isPickup ? "PICK UP" : "DROP OFF"}
+                          </span>
                         </div>
                       )}
                     </div>
@@ -345,41 +388,45 @@ export default function Dashboard() {
 
       {/* Weekly Status Results */}
       {remainingData && (
-        <div style={styles.resultSection}>
-          <h2 style={styles.resultTitle}>Weekly Status</h2>
-          <div style={{ display: "flex", gap: "16px", marginBottom: "20px", flexWrap: "wrap" }}>
-            <div style={{ ...styles.resultBox, flex: 1, textAlign: "center", minWidth: "140px" }}>
-              <div style={{ fontSize: "36px", fontWeight: "700", color: "#28a745" }}>{remainingData.totalConfirmed}</div>
-              <div style={{ fontSize: "14px", color: "#666" }}>Confirmed</div>
+        <div style={s.resultSection}>
+          <div style={s.resultHeader}>
+            <h2 style={s.resultTitle}>Weekly Status</h2>
+          </div>
+          <div style={s.statsRow}>
+            <div style={{ ...s.statCard, borderLeft: "4px solid #28a745" }}>
+              <div style={{ ...s.statNum, color: "#28a745" }}>{remainingData.totalConfirmed}</div>
+              <div style={s.statLabel}>Confirmed</div>
             </div>
-            <div style={{ ...styles.resultBox, flex: 1, textAlign: "center", minWidth: "140px" }}>
-              <div style={{ fontSize: "36px", fontWeight: "700", color: "#dc3545" }}>{remainingData.totalRemaining}</div>
-              <div style={{ fontSize: "14px", color: "#666" }}>No Reply Yet</div>
+            <div style={{ ...s.statCard, borderLeft: "4px solid #dc3545" }}>
+              <div style={{ ...s.statNum, color: "#dc3545" }}>{remainingData.totalRemaining}</div>
+              <div style={s.statLabel}>No Reply</div>
             </div>
-            <div style={{ ...styles.resultBox, flex: 1, textAlign: "center", minWidth: "140px" }}>
-              <div style={{ fontSize: "36px", fontWeight: "700", color: "#667eea" }}>{remainingData.totalCustomers}</div>
-              <div style={{ fontSize: "14px", color: "#666" }}>Total Customers</div>
+            <div style={{ ...s.statCard, borderLeft: "4px solid #667eea" }}>
+              <div style={{ ...s.statNum, color: "#667eea" }}>{remainingData.totalCustomers}</div>
+              <div style={s.statLabel}>Total</div>
             </div>
           </div>
+          {/* Progress bar */}
+          <div style={s.progressWrap}>
+            <div style={s.progressTrack}>
+              <div style={{ ...s.progressFill, width: `${remainingData.totalCustomers > 0 ? (remainingData.totalConfirmed / remainingData.totalCustomers) * 100 : 0}%` }} />
+            </div>
+            <span style={s.progressLabel}>
+              {remainingData.totalCustomers > 0 ? Math.round((remainingData.totalConfirmed / remainingData.totalCustomers) * 100) : 0}% confirmed
+            </span>
+          </div>
           {remainingData.totalRemaining > 0 && (
-            <div style={styles.resultBox}>
-              <h3 style={{ margin: "0 0 8px" }}>Remaining Emails (for follow-up BCC)</h3>
-              <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
+            <div style={s.remainingBox}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                <h3 style={{ margin: 0, fontSize: "14px", fontWeight: "600", color: "#333" }}>Remaining Emails (for follow-up BCC)</h3>
                 <button
-                  onClick={() =>
-                    copyToClipboard(remainingData.emailString, "remaining")
-                  }
-                  style={styles.copyBtn}
+                  onClick={() => copyToClipboard(remainingData.emailString, "remaining")}
+                  style={s.copyBtnSm}
                 >
-                  {copied === "remaining" ? "Copied!" : `Copy ${remainingData.totalRemaining} Remaining Emails`}
+                  {copied === "remaining" ? "&#10003; Copied!" : `Copy ${remainingData.totalRemaining} Emails`}
                 </button>
               </div>
-              <textarea
-                readOnly
-                value={remainingData.emailString}
-                style={styles.emailTextarea}
-                rows={3}
-              />
+              <textarea readOnly value={remainingData.emailString} style={s.textarea} rows={3} />
             </div>
           )}
         </div>
@@ -388,203 +435,460 @@ export default function Dashboard() {
   );
 }
 
-const styles = {
-  // Login
-  loginContainer: {
+const s = {
+  // ── Login ──
+  loginBg: {
     minHeight: "100vh",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+    background: "#0f0f13",
+    backgroundImage: "radial-gradient(ellipse at 50% 0%, rgba(102,126,234,0.15) 0%, transparent 60%)",
   },
   loginCard: {
-    background: "white",
-    borderRadius: "16px",
+    background: "#1a1a24",
+    borderRadius: "20px",
     padding: "48px 40px",
     maxWidth: "380px",
     width: "100%",
     textAlign: "center",
-    boxShadow: "0 20px 60px rgba(0,0,0,0.15)",
+    border: "1px solid rgba(255,255,255,0.08)",
+    boxShadow: "0 24px 80px rgba(0,0,0,0.4)",
   },
-  loginTitle: { margin: "0 0 8px", fontSize: "22px" },
-  loginSub: { margin: "0 0 24px", color: "#666", fontSize: "14px" },
+  loginIcon: {
+    width: "64px",
+    height: "64px",
+    borderRadius: "16px",
+    background: "rgba(102,126,234,0.12)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    margin: "0 auto 20px",
+  },
+  loginTitle: { margin: "0 0 6px", fontSize: "24px", fontWeight: "700", color: "#fff" },
+  loginSub: { margin: "0 0 28px", color: "rgba(255,255,255,0.45)", fontSize: "14px" },
   pinInput: {
     width: "100%",
-    padding: "12px 16px",
-    fontSize: "18px",
-    border: "2px solid #ddd",
-    borderRadius: "8px",
+    padding: "14px 16px",
+    fontSize: "22px",
+    background: "rgba(255,255,255,0.06)",
+    border: "1px solid rgba(255,255,255,0.1)",
+    borderRadius: "12px",
     textAlign: "center",
-    letterSpacing: "4px",
+    letterSpacing: "8px",
     marginBottom: "16px",
     boxSizing: "border-box",
+    color: "#fff",
+    outline: "none",
   },
   loginBtn: {
     width: "100%",
-    padding: "12px",
-    fontSize: "16px",
-    background: "#667eea",
+    padding: "14px",
+    fontSize: "15px",
+    background: "linear-gradient(135deg, #667eea, #764ba2)",
     color: "white",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "12px",
     cursor: "pointer",
     fontWeight: "600",
+    transition: "opacity 0.2s",
   },
-  error: { color: "#dc3545", marginTop: "12px", fontSize: "14px" },
+  loginError: { color: "#ff6b6b", marginTop: "14px", fontSize: "14px" },
 
-  // Dashboard
-  page: { maxWidth: "1100px", margin: "0 auto", padding: "20px" },
+  // ── Page ──
+  page: {
+    maxWidth: "1160px",
+    margin: "0 auto",
+    padding: "24px 20px 60px",
+    background: "#f5f6fa",
+    minHeight: "100vh",
+  },
+
+  // ── Header ──
   header: {
     display: "flex",
     justifyContent: "space-between",
     alignItems: "center",
     flexWrap: "wrap",
-    gap: "12px",
-    marginBottom: "24px",
-    paddingBottom: "16px",
-    borderBottom: "2px solid #eee",
+    gap: "16px",
+    marginBottom: "28px",
+    padding: "20px 24px",
+    background: "#fff",
+    borderRadius: "16px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
   },
-  headerTitle: { margin: 0, fontSize: "22px" },
-  areaToggle: { display: "flex", gap: "8px" },
+  headerLeft: { display: "flex", alignItems: "center", gap: "14px" },
+  logoMark: {
+    width: "44px",
+    height: "44px",
+    borderRadius: "12px",
+    background: "linear-gradient(135deg, #667eea, #764ba2)",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "16px",
+    fontWeight: "800",
+    letterSpacing: "-0.5px",
+  },
+  headerTitle: { margin: 0, fontSize: "20px", fontWeight: "700", color: "#1a1a2e" },
+  headerSub: { margin: "2px 0 0", fontSize: "13px", color: "#888" },
+  areaToggle: {
+    display: "flex",
+    background: "#f0f1f5",
+    borderRadius: "12px",
+    padding: "4px",
+  },
   areaBtn: {
-    padding: "8px 20px",
-    border: "2px solid #ddd",
-    borderRadius: "8px",
-    background: "white",
+    padding: "10px 22px",
+    border: "none",
+    borderRadius: "10px",
+    background: "transparent",
     cursor: "pointer",
     fontSize: "14px",
     fontWeight: "500",
+    color: "#666",
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    gap: "2px",
+    transition: "all 0.2s",
   },
   areaActive: {
-    padding: "8px 20px",
-    border: "2px solid #667eea",
-    borderRadius: "8px",
-    background: "#667eea",
-    color: "white",
-    cursor: "pointer",
-    fontSize: "14px",
-    fontWeight: "600",
-  },
-
-  // Cards
-  grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))", gap: "16px", marginBottom: "32px" },
-  card: {
-    background: "white",
-    border: "1px solid #e0e0e0",
-    borderRadius: "12px",
-    padding: "24px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-  },
-  cardTitle: { margin: "0 0 8px", fontSize: "16px" },
-  cardDesc: { margin: "0 0 16px", color: "#666", fontSize: "14px", lineHeight: "1.5" },
-  cardActions: { display: "flex", flexDirection: "column", gap: "8px" },
-
-  // Buttons
-  dangerBtn: {
-    padding: "10px 20px",
-    background: "#dc3545",
-    color: "white",
+    padding: "10px 22px",
     border: "none",
-    borderRadius: "8px",
+    borderRadius: "10px",
+    background: "#fff",
     cursor: "pointer",
     fontSize: "14px",
-    fontWeight: "600",
-  },
-  primaryBtn: {
-    padding: "10px 20px",
-    background: "#667eea",
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontSize: "14px",
-    fontWeight: "600",
-  },
-  secondaryBtn: {
-    padding: "10px 20px",
-    background: "white",
-    color: "#667eea",
-    border: "2px solid #667eea",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontSize: "14px",
-    fontWeight: "600",
-  },
-  copyBtn: {
-    padding: "10px 20px",
-    background: "#28a745",
-    color: "white",
-    border: "none",
-    borderRadius: "8px",
-    cursor: "pointer",
-    fontSize: "14px",
-    fontWeight: "600",
-  },
-  smallBtn: {
-    padding: "4px 10px",
-    background: "#667eea",
-    color: "white",
-    border: "none",
-    borderRadius: "4px",
-    cursor: "pointer",
-    fontSize: "12px",
-    whiteSpace: "nowrap",
-  },
-
-  // Results
-  resultSection: {
-    background: "white",
-    border: "1px solid #e0e0e0",
-    borderRadius: "12px",
-    padding: "24px",
-    marginBottom: "24px",
-    boxShadow: "0 2px 8px rgba(0,0,0,0.06)",
-  },
-  resultTitle: { margin: "0 0 12px", fontSize: "18px" },
-  resultNote: { margin: "0 0 16px", color: "#666", fontSize: "14px" },
-  resultBox: {
-    background: "#f8f9fa",
-    borderRadius: "8px",
-    padding: "16px",
-    marginBottom: "16px",
-  },
-
-  // Tables
-  table: { border: "1px solid #e0e0e0", borderRadius: "8px", overflow: "hidden" },
-  tableRow: {
+    fontWeight: "700",
+    color: "#1a1a2e",
+    boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
     display: "flex",
-    padding: "10px 12px",
-    borderBottom: "1px solid #eee",
+    flexDirection: "column",
     alignItems: "center",
-    fontSize: "14px",
-    gap: "8px",
+    gap: "2px",
+    transition: "all 0.2s",
+  },
+  areaDays: { fontSize: "11px", fontWeight: "500", opacity: 0.6 },
+
+  // ── Cards Grid ──
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))",
+    gap: "16px",
+    marginBottom: "28px",
+  },
+  card: {
+    background: "#fff",
+    borderRadius: "16px",
+    padding: "24px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+    display: "flex",
+    flexDirection: "column",
+    transition: "box-shadow 0.2s",
+  },
+  cardIconWrap: {
+    width: "44px",
+    height: "44px",
+    borderRadius: "12px",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: "14px",
+  },
+  cardNum: {
+    fontSize: "11px",
+    fontWeight: "700",
+    textTransform: "uppercase",
+    letterSpacing: "1px",
+    color: "#999",
+    marginBottom: "4px",
+  },
+  cardTitle: { margin: "0 0 6px", fontSize: "16px", fontWeight: "700", color: "#1a1a2e" },
+  cardDesc: { margin: "0 0 16px", color: "#777", fontSize: "13px", lineHeight: "1.5", flex: 1 },
+  cardActions: { display: "flex", flexDirection: "column", gap: "8px" },
+  cardBtn: {
+    padding: "10px 18px",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "600",
+    textAlign: "center",
+    transition: "opacity 0.2s",
+  },
+  cardBtnOutline: {
+    padding: "10px 18px",
+    background: "transparent",
+    color: "#667eea",
+    border: "1.5px solid #ddd",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "600",
+    textAlign: "center",
+    transition: "all 0.2s",
   },
 
-  // Misc
-  emailTextarea: {
-    width: "100%",
-    padding: "12px",
-    border: "1px solid #ddd",
-    borderRadius: "8px",
-    fontFamily: "monospace",
-    fontSize: "12px",
-    resize: "vertical",
-    boxSizing: "border-box",
-  },
+  // ── Banners ──
   errorBanner: {
-    background: "#f8d7da",
-    color: "#721c24",
+    background: "#fff0f0",
+    color: "#c0392b",
     padding: "12px 16px",
-    borderRadius: "8px",
+    borderRadius: "12px",
     marginBottom: "16px",
     fontSize: "14px",
+    fontWeight: "500",
+    display: "flex",
+    alignItems: "center",
+    border: "1px solid #fdd",
+  },
+  dismissBtn: {
+    marginLeft: "auto",
+    background: "none",
+    border: "none",
+    color: "#c0392b",
+    cursor: "pointer",
+    fontSize: "16px",
+    padding: "0 4px",
   },
   loadingBanner: {
-    background: "#cce5ff",
-    color: "#004085",
+    background: "#f0f4ff",
+    color: "#667eea",
     padding: "12px 16px",
-    borderRadius: "8px",
+    borderRadius: "12px",
     marginBottom: "16px",
     fontSize: "14px",
+    fontWeight: "500",
+    display: "flex",
+    alignItems: "center",
+    gap: "10px",
+    border: "1px solid #dde4ff",
+  },
+  spinner: {
+    display: "inline-block",
+    width: "16px",
+    height: "16px",
+    border: "2px solid #dde4ff",
+    borderTopColor: "#667eea",
+    borderRadius: "50%",
+    animation: "spin 0.6s linear infinite",
+  },
+
+  // ── Results ──
+  resultSection: {
+    background: "#fff",
+    borderRadius: "16px",
+    padding: "28px",
+    marginBottom: "20px",
+    boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
+  },
+  resultHeader: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "4px",
+  },
+  resultTitle: { margin: 0, fontSize: "18px", fontWeight: "700", color: "#1a1a2e" },
+  resultSub: { margin: "4px 0 16px", color: "#888", fontSize: "13px" },
+  badge: {
+    background: "#f0f1f5",
+    color: "#555",
+    padding: "4px 12px",
+    borderRadius: "20px",
+    fontSize: "12px",
+    fontWeight: "600",
+  },
+  emptyState: {
+    textAlign: "center",
+    padding: "32px",
+    color: "#999",
+    fontSize: "14px",
+  },
+
+  // ── Steps (email section) ──
+  stepsRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
+    gap: "16px",
+    marginTop: "16px",
+  },
+  stepCard: {
+    background: "#f8f9fc",
+    borderRadius: "12px",
+    padding: "20px",
+    border: "1px solid #eee",
+  },
+  stepNum: {
+    width: "28px",
+    height: "28px",
+    borderRadius: "50%",
+    background: "#667eea",
+    color: "white",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: "13px",
+    fontWeight: "700",
+    marginBottom: "10px",
+  },
+  stepTitle: { margin: "0 0 4px", fontSize: "15px", fontWeight: "600", color: "#1a1a2e" },
+  stepDesc: { margin: "0 0 12px", fontSize: "13px", color: "#888" },
+
+  // ── Copy Buttons ──
+  copyBtn: {
+    padding: "10px 20px",
+    background: "linear-gradient(135deg, #667eea, #764ba2)",
+    color: "white",
+    border: "none",
+    borderRadius: "10px",
+    cursor: "pointer",
+    fontSize: "13px",
+    fontWeight: "600",
+    marginBottom: "10px",
+    width: "100%",
+    textAlign: "center",
+  },
+  copyBtnSm: {
+    padding: "6px 14px",
+    background: "linear-gradient(135deg, #667eea, #764ba2)",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "12px",
+    fontWeight: "600",
+    whiteSpace: "nowrap",
+  },
+  textarea: {
+    width: "100%",
+    padding: "10px 12px",
+    border: "1px solid #e5e7eb",
+    borderRadius: "8px",
+    fontFamily: "'SF Mono', 'Fira Code', monospace",
+    fontSize: "11px",
+    resize: "vertical",
+    boxSizing: "border-box",
+    background: "#fff",
+    color: "#555",
+  },
+
+  // ── Tables ──
+  table: {
+    borderRadius: "12px",
+    overflow: "hidden",
+    border: "1px solid #e5e7eb",
+  },
+  tableHeader: {
+    display: "flex",
+    padding: "12px 16px",
+    background: "#f8f9fc",
+    fontWeight: "700",
+    fontSize: "12px",
+    color: "#888",
+    textTransform: "uppercase",
+    letterSpacing: "0.5px",
+    borderBottom: "1px solid #e5e7eb",
+    gap: "8px",
+  },
+  tableRow: {
+    display: "flex",
+    padding: "12px 16px",
+    borderBottom: "1px solid #f0f1f5",
+    alignItems: "center",
+    fontSize: "13px",
+    gap: "8px",
+    color: "#333",
+    transition: "background 0.15s",
+  },
+  legendTag: {
+    pickup: {
+      background: "#e8f5e9",
+      color: "#2e7d32",
+      padding: "5px 14px",
+      borderRadius: "20px",
+      fontSize: "12px",
+      fontWeight: "700",
+    },
+    dropoff: {
+      background: "#ffebee",
+      color: "#c62828",
+      padding: "5px 14px",
+      borderRadius: "20px",
+      fontSize: "12px",
+      fontWeight: "700",
+    },
+  },
+  typeBadge: {
+    pickup: {
+      display: "inline-block",
+      background: "#2e7d32",
+      color: "#fff",
+      padding: "3px 10px",
+      borderRadius: "6px",
+      fontSize: "11px",
+      fontWeight: "700",
+      letterSpacing: "0.3px",
+    },
+    dropoff: {
+      display: "inline-block",
+      background: "#c62828",
+      color: "#fff",
+      padding: "3px 10px",
+      borderRadius: "6px",
+      fontSize: "11px",
+      fontWeight: "700",
+      letterSpacing: "0.3px",
+    },
+  },
+
+  // ── Stats ──
+  statsRow: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+    gap: "12px",
+    marginBottom: "16px",
+    marginTop: "16px",
+  },
+  statCard: {
+    background: "#f8f9fc",
+    borderRadius: "12px",
+    padding: "20px",
+    textAlign: "center",
+  },
+  statNum: { fontSize: "36px", fontWeight: "800", lineHeight: 1 },
+  statLabel: { fontSize: "13px", color: "#888", marginTop: "4px", fontWeight: "500" },
+  progressWrap: {
+    display: "flex",
+    alignItems: "center",
+    gap: "12px",
+    marginBottom: "20px",
+  },
+  progressTrack: {
+    flex: 1,
+    height: "8px",
+    background: "#f0f1f5",
+    borderRadius: "4px",
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    background: "linear-gradient(90deg, #28a745, #20c997)",
+    borderRadius: "4px",
+    transition: "width 0.5s ease",
+  },
+  progressLabel: {
+    fontSize: "13px",
+    fontWeight: "600",
+    color: "#28a745",
+    whiteSpace: "nowrap",
+  },
+  remainingBox: {
+    background: "#f8f9fc",
+    borderRadius: "12px",
+    padding: "16px",
+    border: "1px solid #eee",
   },
 };
