@@ -285,22 +285,30 @@ export default function Dashboard() {
       {pickupList && (
         <div style={styles.resultSection}>
           <h2 style={styles.resultTitle}>
-            {pickupList.day} Pickup List — {pickupList.totalConfirmed} pickups
+            {pickupList.day} {pickupList.isCombined ? "Route" : "Pickup List"} — {pickupList.totalConfirmed} stops
           </h2>
+          {pickupList.isCombined && (
+            <p style={{ color: "#666", margin: "0 0 16px", fontSize: "14px" }}>
+              Combined list: {pickupList.totalDropoffs} drop-off(s) from {pickupList.day1} + {pickupList.totalPickups} pickup(s) for {pickupList.day}
+            </p>
+          )}
           {pickupList.pickupList.length === 0 ? (
             <p style={{ color: "#666" }}>No confirmations yet for {pickupList.day}.</p>
           ) : (
             <>
               <button
                 onClick={() => {
-                  // Generate printable pickup list
+                  const typeHeader = pickupList.isCombined ? `<th style="border:1px solid #ddd;padding:8px;text-align:left">Type</th>` : "";
                   const rows = pickupList.pickupList
-                    .map(
-                      (p) =>
-                        `<tr><td style="border:1px solid #ddd;padding:8px">${p.address}</td><td style="border:1px solid #ddd;padding:8px">${p.unit}</td><td style="border:1px solid #ddd;padding:8px">${p.entryMethod}</td><td style="border:1px solid #ddd;padding:8px">${p.name}</td></tr>`
-                    )
+                    .map((p) => {
+                      const bgColor = p.type === "pickup" ? "#d4edda" : p.type === "dropoff" ? "#f8d7da" : "white";
+                      const typeCell = pickupList.isCombined
+                        ? `<td style="border:1px solid #ddd;padding:8px;background:${bgColor};font-weight:bold">${p.type === "pickup" ? "PICK UP" : "DROP OFF"}</td>`
+                        : "";
+                      return `<tr style="background:${bgColor}"><td style="border:1px solid #ddd;padding:8px">${p.address}</td><td style="border:1px solid #ddd;padding:8px">${p.unit}</td><td style="border:1px solid #ddd;padding:8px">${p.entryMethod}</td><td style="border:1px solid #ddd;padding:8px">${p.name}</td>${typeCell}</tr>`;
+                    })
                     .join("");
-                  const html = `<html><head><title>${pickupList.day} Pickup List</title></head><body style="font-family:Arial,sans-serif"><h1>${pickupList.day} Pickup List — ${pickupList.area}</h1><p>${new Date().toLocaleDateString()}</p><table style="border-collapse:collapse;width:100%"><tr style="background:#f0f0f0"><th style="border:1px solid #ddd;padding:8px;text-align:left">Address</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Unit</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Entry Method</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Customer</th></tr>${rows}</table></body></html>`;
+                  const html = `<html><head><title>${pickupList.day} Route</title></head><body style="font-family:Arial,sans-serif"><h1>${pickupList.day} Route — ${pickupList.area}</h1><p>${new Date().toLocaleDateString()}${pickupList.isCombined ? ` | ${pickupList.totalDropoffs} drop-offs + ${pickupList.totalPickups} pickups` : ""}</p>${pickupList.isCombined ? '<p><span style="background:#d4edda;padding:2px 8px;border-radius:4px;font-weight:bold">GREEN = PICK UP</span> &nbsp; <span style="background:#f8d7da;padding:2px 8px;border-radius:4px;font-weight:bold">RED = DROP OFF</span></p>' : ""}<table style="border-collapse:collapse;width:100%"><tr style="background:#f0f0f0"><th style="border:1px solid #ddd;padding:8px;text-align:left">Address</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Unit</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Entry Method</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Customer</th>${typeHeader}</tr>${rows}</table></body></html>`;
                   const w = window.open();
                   w.document.write(html);
                   w.document.close();
@@ -311,21 +319,37 @@ export default function Dashboard() {
                 Print / Save as PDF
               </button>
 
+              {pickupList.isCombined && (
+                <div style={{ display: "flex", gap: "12px", margin: "12px 0", fontSize: "14px", fontWeight: "600" }}>
+                  <span style={{ background: "#d4edda", padding: "4px 12px", borderRadius: "6px", color: "#155724" }}>GREEN = PICK UP</span>
+                  <span style={{ background: "#f8d7da", padding: "4px 12px", borderRadius: "6px", color: "#721c24" }}>RED = DROP OFF</span>
+                </div>
+              )}
+
               <div style={{ ...styles.table, marginTop: "16px" }}>
                 <div style={{ ...styles.tableRow, fontWeight: "bold", background: "#f0f0f0" }}>
                   <div style={{ flex: 2 }}>Address</div>
                   <div style={{ flex: 1 }}>Unit</div>
                   <div style={{ flex: 2 }}>Entry Method</div>
                   <div style={{ flex: 2 }}>Customer</div>
+                  {pickupList.isCombined && <div style={{ flex: 1 }}>Type</div>}
                 </div>
-                {pickupList.pickupList.map((p, i) => (
-                  <div key={i} style={styles.tableRow}>
-                    <div style={{ flex: 2 }}>{p.address}</div>
-                    <div style={{ flex: 1 }}>{p.unit}</div>
-                    <div style={{ flex: 2, fontSize: "13px" }}>{p.entryMethod}</div>
-                    <div style={{ flex: 2 }}>{p.name}</div>
-                  </div>
-                ))}
+                {pickupList.pickupList.map((p, i) => {
+                  const rowBg = p.type === "pickup" ? "#d4edda" : p.type === "dropoff" ? "#f8d7da" : "white";
+                  return (
+                    <div key={i} style={{ ...styles.tableRow, background: rowBg }}>
+                      <div style={{ flex: 2 }}>{p.address}</div>
+                      <div style={{ flex: 1 }}>{p.unit}</div>
+                      <div style={{ flex: 2, fontSize: "13px" }}>{p.entryMethod}</div>
+                      <div style={{ flex: 2 }}>{p.name}</div>
+                      {pickupList.isCombined && (
+                        <div style={{ flex: 1, fontWeight: "700", color: p.type === "pickup" ? "#155724" : "#721c24" }}>
+                          {p.type === "pickup" ? "PICK UP" : "DROP OFF"}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </>
           )}
