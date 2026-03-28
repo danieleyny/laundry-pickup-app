@@ -8,12 +8,13 @@ export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const area = searchParams.get("area") || "uptown";
   const week = searchParams.get("week") || getCurrentWeekId();
-  const pin = searchParams.get("pin");
   const onlyRemaining = searchParams.get("onlyRemaining") === "true";
 
-  if (pin !== process.env.ADMIN_PIN) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  // PIN auth temporarily disabled
+  // const pin = searchParams.get("pin");
+  // if (pin !== process.env.ADMIN_PIN) {
+  //   return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  // }
 
   try {
     const config = AREA_CONFIG[area];
