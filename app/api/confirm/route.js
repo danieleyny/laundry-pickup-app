@@ -28,6 +28,7 @@ export async function GET(request) {
       const notFoundUrl = new URL("/confirm", request.url);
       notFoundUrl.searchParams.set("status", "not_found");
       notFoundUrl.searchParams.set("email", email);
+      notFoundUrl.searchParams.set("area", area);
       return NextResponse.redirect(notFoundUrl);
     }
 

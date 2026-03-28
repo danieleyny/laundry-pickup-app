@@ -8,6 +8,7 @@ function ConfirmContent() {
   const day = params.get("day");
   const name = params.get("name") || "";
   const email = params.get("email") || "";
+  const area = params.get("area") || "uptown";
 
   const firstName = name.split(" ")[0];
 
@@ -64,10 +65,14 @@ function ConfirmContent() {
           <p style={styles.sub}>
             Please contact us so we can get this sorted out:
           </p>
-          <a href={mailtoLink} style={styles.contactBtn}>
-            Email Laundry Day NYC
-          </a>
-          <div style={styles.footer}>laundrydaynyc@gmail.com</div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "12px", alignItems: "center" }}>
+            <a href={`/pickup?area=${area}`} style={styles.contactBtn}>
+              Try Again
+            </a>
+            <a href={mailtoLink} style={styles.secondaryLink}>
+              Email Laundry Day NYC
+            </a>
+          </div>
         </div>
       </div>
     );
@@ -167,6 +172,17 @@ const styles = {
     borderRadius: "8px",
     fontSize: "16px",
     fontWeight: "600",
+  },
+  secondaryLink: {
+    display: "inline-block",
+    padding: "10px 24px",
+    background: "white",
+    color: "#667eea",
+    textDecoration: "none",
+    borderRadius: "8px",
+    fontSize: "14px",
+    fontWeight: "600",
+    border: "2px solid #667eea",
   },
   footer: {
     marginTop: "16px",
