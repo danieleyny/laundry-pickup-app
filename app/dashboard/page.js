@@ -384,14 +384,22 @@ export default function Dashboard() {
                   {copied === "day2bcc" ? "&#10003; Copied!" : `Copy ${day2Confirmations.totalConfirmed} Emails`}
                 </button>
                 <button
-                  onClick={() => copyToClipboard(`Reminder: Laundry Collection - (Today, ${day2Confirmations.day})`, "day2subject")}
+                  onClick={() => copyToClipboard("Confirmed For Pick Up Today", "day2subject")}
                   style={{ ...s.copyBtn, width: "auto", background: "linear-gradient(135deg, #11998e, #38ef7d)" }}
                 >
                   {copied === "day2subject" ? "&#10003; Copied!" : "Copy Subject"}
                 </button>
+                <button
+                  onClick={() => copyToClipboard("Hello! You are confirmed for pick up today! Please remember to make sure your bag is left out before 10am to ensure collection. As a reminder - the exact time that your bag will be collected varies depending on our drivers route for the day and the amount of traffic they face. Thank you for signing up!", "day2body")}
+                  style={{ ...s.copyBtn, width: "auto", background: "linear-gradient(135deg, #764ba2, #667eea)" }}
+                >
+                  {copied === "day2body" ? "&#10003; Copied!" : "Copy Email Body"}
+                </button>
               </div>
               <p style={{ margin: "0 0 6px", fontSize: "12px", color: "#888", fontWeight: "600" }}>SUBJECT</p>
-              <textarea readOnly value={`Reminder: Laundry Collection - (Today, ${day2Confirmations.day})`} style={s.textarea} rows={1} />
+              <textarea readOnly value="Confirmed For Pick Up Today" style={s.textarea} rows={1} />
+              <p style={{ margin: "12px 0 6px", fontSize: "12px", color: "#888", fontWeight: "600" }}>EMAIL BODY</p>
+              <textarea readOnly value="Hello! You are confirmed for pick up today! Please remember to make sure your bag is left out before 10am to ensure collection. As a reminder - the exact time that your bag will be collected varies depending on our drivers route for the day and the amount of traffic they face. Thank you for signing up!" style={s.textarea} rows={4} />
               <p style={{ margin: "12px 0 6px", fontSize: "12px", color: "#888", fontWeight: "600" }}>BCC EMAILS</p>
               <textarea readOnly value={day2Confirmations.emailString} style={s.textarea} rows={3} />
             </div>
