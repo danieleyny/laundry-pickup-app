@@ -13,6 +13,7 @@ export default function Dashboard() {
   const [remainingData, setRemainingData] = useState(null);
   const [emailLinks, setEmailLinks] = useState(null);
   const [responses, setResponses] = useState(null);
+  const [day2Confirmations, setDay2Confirmations] = useState(null);
   const [copied, setCopied] = useState("");
   const [emailType, setEmailType] = useState("full"); // "full" or "remaining"
 
@@ -84,6 +85,18 @@ export default function Dashboard() {
       });
       setEmailLinks(data);
       setEmailType(onlyRemaining ? "remaining" : "full");
+    } catch (err) {
+      setError(err.message);
+    }
+    setLoading(false);
+  };
+
+  const loadDay2Confirmations = async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await apiFetch("/api/day2-confirmations");
+      setDay2Confirmations(data);
     } catch (err) {
       setError(err.message);
     }
@@ -187,14 +200,14 @@ export default function Dashboard() {
         </div>
         <div style={s.areaToggle}>
           <button
-            onClick={() => { setArea("uptown"); setPickupList(null); setRemainingData(null); setEmailLinks(null); }}
+            onClick={() => { setArea("uptown"); setPickupList(null); setRemainingData(null); setEmailLinks(null); setDay2Confirmations(null); }}
             style={area === "uptown" ? s.areaActive : s.areaBtn}
           >
             Uptown
             <span style={s.areaDays}>{area === "uptown" ? "Fri / Sat" : "Fri / Sat"}</span>
           </button>
           <button
-            onClick={() => { setArea("downtown"); setPickupList(null); setRemainingData(null); setEmailLinks(null); }}
+            onClick={() => { setArea("downtown"); setPickupList(null); setRemainingData(null); setEmailLinks(null); setDay2Confirmations(null); }}
             style={area === "downtown" ? s.areaActive : s.areaBtn}
           >
             Downtown
@@ -231,6 +244,9 @@ export default function Dashboard() {
                 </button>
                 <button onClick={() => loadEmailLinks(true)} style={s.cardBtnOutline}>
                   Remaining Customers Only
+                </button>
+                <button onClick={loadDay2Confirmations} style={{ ...s.cardBtnOutline, color: "#11998e", borderColor: "#11998e" }}>
+                  {config.day2} Confirmations
                 </button>
               </>
             ),
@@ -344,6 +360,42 @@ export default function Dashboard() {
               />
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Day2 Confirmations Results */}
+      {day2Confirmations && (
+        <div style={s.resultSection}>
+          <div style={s.resultHeader}>
+            <h2 style={s.resultTitle}>{day2Confirmations.day} Confirmations</h2>
+            <span style={s.badge}>{day2Confirmations.totalConfirmed} confirmed</span>
+          </div>
+          {day2Confirmations.totalConfirmed === 0 ? (
+            <div style={s.emptyState}>
+              <p>No one has confirmed for {day2Confirmations.day} yet.</p>
+            </div>
+          ) : (
+            <div style={{ marginTop: "16px" }}>
+              <div style={{ display: "flex", gap: "10px", flexWrap: "wrap", marginBottom: "12px" }}>
+                <button
+                  onClick={() => copyToClipboard(day2Confirmations.emailString, "day2bcc")}
+                  style={{ ...s.copyBtn, width: "auto" }}
+                >
+                  {copied === "day2bcc" ? "&#10003; Copied!" : `Copy ${day2Confirmations.totalConfirmed} Emails`}
+                </button>
+                <button
+                  onClick={() => copyToClipboard(`Reminder: Laundry Collection - (Today, ${day2Confirmations.day})`, "day2subject")}
+                  style={{ ...s.copyBtn, width: "auto", background: "linear-gradient(135deg, #11998e, #38ef7d)" }}
+                >
+                  {copied === "day2subject" ? "&#10003; Copied!" : "Copy Subject"}
+                </button>
+              </div>
+              <p style={{ margin: "0 0 6px", fontSize: "12px", color: "#888", fontWeight: "600" }}>SUBJECT</p>
+              <textarea readOnly value={`Reminder: Laundry Collection - (Today, ${day2Confirmations.day})`} style={s.textarea} rows={1} />
+              <p style={{ margin: "12px 0 6px", fontSize: "12px", color: "#888", fontWeight: "600" }}>BCC EMAILS</p>
+              <textarea readOnly value={day2Confirmations.emailString} style={s.textarea} rows={3} />
+            </div>
+          )}
         </div>
       )}
 
