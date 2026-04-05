@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { logPickupConfirmation, getCurrentWeekId, getCustomers } from "../../../lib/sheets";
+import { isLateSignup, sendLateSignupNotification } from "../../../lib/email";
 
 // GET /api/confirm?email=x&day=friday&area=uptown&week=2026-W13
 export async function GET(request) {
@@ -31,6 +32,17 @@ export async function GET(request) {
       day,
       customerName
     );
+
+    // If this is a brand-new confirmation and it's past 10:00 AM ET, notify admin
+    if (result.status === "confirmed" && isLateSignup()) {
+      sendLateSignupNotification({
+        customerName,
+        email,
+        day,
+        area,
+        timestamp: new Date().toISOString(),
+      }).catch((err) => console.error("[Late Signup] Notification failed:", err));
+    }
 
     // Redirect to confirmation page
     const confirmUrl = new URL("/confirm", request.url);

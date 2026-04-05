@@ -1,5 +1,5 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 
 export default function Dashboard() {
   const [pin, setPin] = useState("");
@@ -10,10 +10,16 @@ export default function Dashboard() {
 
   // Data states
   const [pickupList, setPickupList] = useState(null);
+  const [localPickupList, setLocalPickupList] = useState([]);
   const [remainingData, setRemainingData] = useState(null);
   const [emailLinks, setEmailLinks] = useState(null);
   const [responses, setResponses] = useState(null);
   const [copied, setCopied] = useState("");
+
+  // Drag state
+  const dragItem = useRef(null);
+  const dragOverItem = useRef(null);
+  const [dragOverIndex, setDragOverIndex] = useState(null);
 
   const areaConfig = {
     uptown: { day1: "Friday", day2: "Saturday" },
@@ -21,6 +27,13 @@ export default function Dashboard() {
   };
 
   const config = areaConfig[area];
+
+  // Sync localPickupList whenever the server response changes
+  useEffect(() => {
+    if (pickupList) {
+      setLocalPickupList([...pickupList.pickupList]);
+    }
+  }, [pickupList]);
 
   const apiFetch = useCallback(
     async (endpoint, params = {}) => {
@@ -92,6 +105,81 @@ export default function Dashboard() {
     await navigator.clipboard.writeText(text);
     setCopied(label);
     setTimeout(() => setCopied(""), 2000);
+  };
+
+  // ── Drag-and-drop handlers ────────────────────────────────────────────────
+
+  const handleDragStart = (index) => {
+    dragItem.current = index;
+  };
+
+  const handleDragEnter = (index) => {
+    dragOverItem.current = index;
+    setDragOverIndex(index);
+  };
+
+  const handleDragEnd = () => {
+    if (dragItem.current === null || dragOverItem.current === null) return;
+    if (dragItem.current === dragOverItem.current) {
+      dragItem.current = null;
+      dragOverItem.current = null;
+      setDragOverIndex(null);
+      return;
+    }
+    const items = [...localPickupList];
+    const dragged = items.splice(dragItem.current, 1)[0];
+    items.splice(dragOverItem.current, 0, dragged);
+    dragItem.current = null;
+    dragOverItem.current = null;
+    setDragOverIndex(null);
+    setLocalPickupList(items);
+  };
+
+  // ── Excel download ────────────────────────────────────────────────────────
+
+  const downloadExcel = async () => {
+    // Dynamically import xlsx so it doesn't bloat the initial bundle
+    const XLSX = (await import("xlsx")).default;
+
+    const rows = localPickupList.map((p, i) => ({
+      "#": i + 1,
+      Address: p.address,
+      Unit: p.unit,
+      "Entry Method": p.entryMethod,
+      Customer: p.name,
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, pickupList.day);
+
+    // Auto-size columns (rough estimate)
+    ws["!cols"] = [
+      { wch: 4 },
+      { wch: 30 },
+      { wch: 10 },
+      { wch: 28 },
+      { wch: 24 },
+    ];
+
+    const filename = `${pickupList.day}-Pickup-List.xlsx`;
+    XLSX.writeFile(wb, filename);
+  };
+
+  // ── Print ────────────────────────────────────────────────────────────────
+
+  const printList = () => {
+    const rows = localPickupList
+      .map(
+        (p) =>
+          `<tr><td style="border:1px solid #ddd;padding:8px">${p.address}</td><td style="border:1px solid #ddd;padding:8px">${p.unit}</td><td style="border:1px solid #ddd;padding:8px">${p.entryMethod}</td><td style="border:1px solid #ddd;padding:8px">${p.name}</td></tr>`
+      )
+      .join("");
+    const html = `<html><head><title>${pickupList.day} Pickup List</title></head><body style="font-family:Arial,sans-serif"><h1>${pickupList.day} Pickup List — ${pickupList.area}</h1><p>${new Date().toLocaleDateString()}</p><table style="border-collapse:collapse;width:100%"><tr style="background:#f0f0f0"><th style="border:1px solid #ddd;padding:8px;text-align:left">Address</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Unit</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Entry Method</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Customer</th></tr>${rows}</table></body></html>`;
+    const w = window.open();
+    w.document.write(html);
+    w.document.close();
+    w.print();
   };
 
   // LOGIN SCREEN
@@ -274,39 +362,63 @@ export default function Dashboard() {
           <h2 style={styles.resultTitle}>
             {pickupList.day} Pickup List — {pickupList.totalConfirmed} pickups
           </h2>
-          {pickupList.pickupList.length === 0 ? (
+          {localPickupList.length === 0 ? (
             <p style={{ color: "#666" }}>No confirmations yet for {pickupList.day}.</p>
           ) : (
             <>
-              <button
-                onClick={() => {
-                  // Generate printable pickup list
-                  const rows = pickupList.pickupList
-                    .map(
-                      (p) =>
-                        `<tr><td style="border:1px solid #ddd;padding:8px">${p.address}</td><td style="border:1px solid #ddd;padding:8px">${p.unit}</td><td style="border:1px solid #ddd;padding:8px">${p.entryMethod}</td><td style="border:1px solid #ddd;padding:8px">${p.name}</td></tr>`
-                    )
-                    .join("");
-                  const html = `<html><head><title>${pickupList.day} Pickup List</title></head><body style="font-family:Arial,sans-serif"><h1>${pickupList.day} Pickup List — ${pickupList.area}</h1><p>${new Date().toLocaleDateString()}</p><table style="border-collapse:collapse;width:100%"><tr style="background:#f0f0f0"><th style="border:1px solid #ddd;padding:8px;text-align:left">Address</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Unit</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Entry Method</th><th style="border:1px solid #ddd;padding:8px;text-align:left">Customer</th></tr>${rows}</table></body></html>`;
-                  const w = window.open();
-                  w.document.write(html);
-                  w.document.close();
-                  w.print();
-                }}
-                style={styles.primaryBtn}
-              >
-                Print / Save as PDF
-              </button>
+              <div style={{ display: "flex", gap: "8px", flexWrap: "wrap", marginBottom: "16px" }}>
+                <button onClick={printList} style={styles.primaryBtn}>
+                  Print / Save as PDF
+                </button>
+                <button onClick={downloadExcel} style={styles.excelBtn}>
+                  Download Excel
+                </button>
+              </div>
 
-              <div style={{ ...styles.table, marginTop: "16px" }}>
+              <p style={{ margin: "0 0 8px", fontSize: "13px", color: "#888" }}>
+                Drag the &#9776; handle to reorder rows. The new order is used for both Print and Excel export.
+              </p>
+
+              <div style={{ ...styles.table, marginTop: "4px" }}>
+                {/* Header */}
                 <div style={{ ...styles.tableRow, fontWeight: "bold", background: "#f0f0f0" }}>
+                  <div style={{ width: "28px", flexShrink: 0 }} />
                   <div style={{ flex: 2 }}>Address</div>
                   <div style={{ flex: 1 }}>Unit</div>
                   <div style={{ flex: 2 }}>Entry Method</div>
                   <div style={{ flex: 2 }}>Customer</div>
                 </div>
-                {pickupList.pickupList.map((p, i) => (
-                  <div key={i} style={styles.tableRow}>
+
+                {/* Draggable rows */}
+                {localPickupList.map((p, i) => (
+                  <div
+                    key={i}
+                    draggable
+                    onDragStart={() => handleDragStart(i)}
+                    onDragEnter={() => handleDragEnter(i)}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDragEnd={handleDragEnd}
+                    style={{
+                      ...styles.tableRow,
+                      ...(dragOverIndex === i ? styles.tableRowDragOver : {}),
+                      cursor: "grab",
+                      userSelect: "none",
+                    }}
+                  >
+                    {/* Drag handle */}
+                    <div
+                      style={{
+                        width: "28px",
+                        flexShrink: 0,
+                        color: "#aaa",
+                        fontSize: "16px",
+                        textAlign: "center",
+                        cursor: "grab",
+                      }}
+                      title="Drag to reorder"
+                    >
+                      &#9776;
+                    </div>
                     <div style={{ flex: 2 }}>{p.address}</div>
                     <div style={{ flex: 1 }}>{p.unit}</div>
                     <div style={{ flex: 2, fontSize: "13px" }}>{p.entryMethod}</div>
@@ -476,6 +588,16 @@ const styles = {
     fontSize: "14px",
     fontWeight: "600",
   },
+  excelBtn: {
+    padding: "10px 20px",
+    background: "#217346",
+    color: "white",
+    border: "none",
+    borderRadius: "8px",
+    cursor: "pointer",
+    fontSize: "14px",
+    fontWeight: "600",
+  },
   smallBtn: {
     padding: "4px 10px",
     background: "#667eea",
@@ -514,6 +636,10 @@ const styles = {
     alignItems: "center",
     fontSize: "14px",
     gap: "8px",
+  },
+  tableRowDragOver: {
+    background: "#eef2ff",
+    borderTop: "2px solid #667eea",
   },
 
   // Misc
