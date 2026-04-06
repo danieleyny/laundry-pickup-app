@@ -15,6 +15,7 @@ export default function Dashboard() {
   const [responses, setResponses] = useState(null);
   const [day2Confirmations, setDay2Confirmations] = useState(null);
   const [copied, setCopied] = useState("");
+  const [dragIdx, setDragIdx] = useState(null);
   const [emailType, setEmailType] = useState("full"); // "full" or "remaining"
 
   const areaConfig = {
@@ -414,7 +415,7 @@ export default function Dashboard() {
             <h2 style={s.resultTitle}>
               {pickupList.day} {pickupList.isCombined ? "Route" : "Pickup List"}
             </h2>
-            <span style={s.badge}>{pickupList.totalConfirmed} stops</span>
+            <span style={s.badge}>{pickupList.pickupList.length} stops</span>
           </div>
           {pickupList.isCombined && (
             <p style={s.resultSub}>
@@ -429,8 +430,31 @@ export default function Dashboard() {
             <>
               <div style={{ display: "flex", gap: "10px", alignItems: "center", flexWrap: "wrap", marginBottom: "16px" }}>
                 <button
-                  onClick={() => {
-                    window.open(`/api/pickup-list-xlsx?area=${pickupList.area}&day=${pickupList.day}&pin=${pin}`, "_blank");
+                  onClick={async () => {
+                    try {
+                      const res = await fetch("/api/pickup-list-xlsx", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                          pickupList: pickupList.pickupList,
+                          day: pickupList.day,
+                          area: pickupList.area,
+                          isCombined: pickupList.isCombined,
+                          totalDropoffs: pickupList.totalDropoffs,
+                          totalPickups: pickupList.totalPickups,
+                          pin,
+                        }),
+                      });
+                      const blob = await res.blob();
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = res.headers.get("Content-Disposition")?.match(/filename="(.+)"/)?.[1] || "route.xlsx";
+                      a.click();
+                      URL.revokeObjectURL(url);
+                    } catch (err) {
+                      setError("Failed to download Excel: " + err.message);
+                    }
                   }}
                   style={{ ...s.cardBtn, background: "#11998e", padding: "10px 24px" }}
                 >
@@ -442,10 +466,12 @@ export default function Dashboard() {
                     <span style={s.legendTag.dropoff}>DROP OFF</span>
                   </>
                 )}
+                <span style={{ fontSize: "12px", color: "#999", marginLeft: "auto" }}>Drag rows to reorder</span>
               </div>
 
               <div style={s.table}>
                 <div style={s.tableHeader}>
+                  <div style={{ width: "28px" }}></div>
                   <div style={{ flex: 3 }}>Address</div>
                   <div style={{ flex: 1 }}>Unit</div>
                   <div style={{ flex: 3 }}>Entry Method</div>
@@ -455,8 +481,30 @@ export default function Dashboard() {
                   const isPickup = p.type === "pickup";
                   const isDropoff = p.type === "dropoff";
                   const rowBg = isPickup ? "#e8f5e9" : isDropoff ? "#ffebee" : (i % 2 === 0 ? "#fff" : "#fafafa");
+                  const isDragging = dragIdx === i;
                   return (
-                    <div key={i} style={{ ...s.tableRow, background: rowBg }}>
+                    <div
+                      key={i}
+                      draggable
+                      onDragStart={() => setDragIdx(i)}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (dragIdx === null || dragIdx === i) return;
+                        const newList = [...pickupList.pickupList];
+                        const [moved] = newList.splice(dragIdx, 1);
+                        newList.splice(i, 0, moved);
+                        setPickupList({ ...pickupList, pickupList: newList });
+                        setDragIdx(i);
+                      }}
+                      onDragEnd={() => setDragIdx(null)}
+                      style={{
+                        ...s.tableRow,
+                        background: isDragging ? "#e3e8ff" : rowBg,
+                        opacity: isDragging ? 0.7 : 1,
+                        cursor: "grab",
+                      }}
+                    >
+                      <div style={{ width: "28px", color: "#bbb", fontSize: "16px", cursor: "grab", userSelect: "none", textAlign: "center" }}>&#9776;</div>
                       <div style={{ flex: 3, fontWeight: "500" }}>{p.address}</div>
                       <div style={{ flex: 1 }}>{p.unit}</div>
                       <div style={{ flex: 3, color: "#555" }}>{p.entryMethod}</div>
