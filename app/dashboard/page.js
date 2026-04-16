@@ -18,6 +18,18 @@ export default function Dashboard() {
   const [dragIdx, setDragIdx] = useState(null);
   const [emailType, setEmailType] = useState("full"); // "full" or "remaining"
 
+  // Add-row state
+  const [showAddRow, setShowAddRow] = useState(false);
+  const [addAddr, setAddAddr] = useState("");
+  const [addUnit, setAddUnit] = useState("");
+  const [addEntry, setAddEntry] = useState("");
+  const [addType, setAddType] = useState("pickup");
+  const [addressData, setAddressData] = useState(null); // autocomplete data
+  const [addrSuggestions, setAddrSuggestions] = useState([]);
+  const [unitSuggestions, setUnitSuggestions] = useState([]);
+  const [showAddrDropdown, setShowAddrDropdown] = useState(false);
+  const [showUnitDropdown, setShowUnitDropdown] = useState(false);
+
   const areaConfig = {
     uptown: { day1: "Friday", day2: "Saturday" },
     downtown: { day1: "Tuesday", day2: "Thursday" },
@@ -59,6 +71,7 @@ export default function Dashboard() {
     try {
       const data = await apiFetch("/api/pickup-list", { day });
       setPickupList(data);
+      loadAddressData(); // preload autocomplete data
     } catch (err) {
       setError(err.message);
     }
@@ -120,6 +133,80 @@ export default function Dashboard() {
       return `Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area Today, ${todayDay}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup, please click the link below and type in your email:\n\n${BASE_URL}/pickup?area=${area}&day=${todayDay}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`;
     }
     return `Hello!\n\nWe are reaching out to remind you that the laundry collection service will be stopping by your area on ${config.day1} & ${config.day2}. Please make sure to leave your laundry outside before 10 AM to ensure that it is collected.\n\nTo confirm your pickup, please click the link below and type in your email:\n\n${BASE_URL}/pickup?area=${area}\n\nIf you would prefer not to receive the weekly reminders, please respond letting us know.`;
+  };
+
+  // Load address autocomplete data when pickup list is loaded
+  const loadAddressData = async () => {
+    if (addressData) return; // already loaded
+    try {
+      const data = await apiFetch("/api/address-lookup");
+      setAddressData(data.addresses || []);
+    } catch (err) {
+      console.warn("Could not load address data for autocomplete");
+    }
+  };
+
+  const handleAddrInput = (val) => {
+    setAddAddr(val);
+    setAddUnit("");
+    setAddEntry("");
+    if (!addressData || val.length < 2) {
+      setAddrSuggestions([]);
+      setShowAddrDropdown(false);
+      return;
+    }
+    const lower = val.toLowerCase();
+    const matches = addressData.filter((a) =>
+      a.address.toLowerCase().includes(lower)
+    ).slice(0, 8);
+    setAddrSuggestions(matches);
+    setShowAddrDropdown(matches.length > 0);
+  };
+
+  const selectAddr = (item) => {
+    setAddAddr(item.address);
+    setAddEntry(item.entryMethod || "");
+    setAddrSuggestions([]);
+    setShowAddrDropdown(false);
+    if (item.units.length > 0) {
+      setUnitSuggestions(item.units);
+    } else {
+      setUnitSuggestions([]);
+    }
+  };
+
+  const handleUnitFocus = () => {
+    if (!addressData) return;
+    const match = addressData.find(
+      (a) => a.address.toLowerCase() === addAddr.toLowerCase()
+    );
+    if (match && match.units.length > 0) {
+      setUnitSuggestions(match.units);
+      setShowUnitDropdown(true);
+    }
+  };
+
+  const removeRow = (idx) => {
+    if (!pickupList) return;
+    const newList = pickupList.pickupList.filter((_, i) => i !== idx);
+    setPickupList({ ...pickupList, pickupList: newList });
+  };
+
+  const addRow = () => {
+    if (!addAddr.trim()) return;
+    const newEntry = {
+      address: addAddr.trim(),
+      unit: addUnit.trim(),
+      entryMethod: addEntry.trim() || "See notes",
+      type: addType,
+    };
+    const newList = [...pickupList.pickupList, newEntry];
+    setPickupList({ ...pickupList, pickupList: newList });
+    setAddAddr("");
+    setAddUnit("");
+    setAddEntry("");
+    setAddType("pickup");
+    setShowAddRow(false);
   };
 
   const copyToClipboard = async (text, label) => {
@@ -476,6 +563,7 @@ export default function Dashboard() {
                   <div style={{ flex: 1 }}>Unit</div>
                   <div style={{ flex: 3 }}>Entry Method</div>
                   {pickupList.isCombined && <div style={{ flex: 1.5 }}>Type</div>}
+                  <div style={{ width: "28px" }}></div>
                 </div>
                 {pickupList.pickupList.map((p, i) => {
                   const isPickup = p.type === "pickup";
@@ -515,10 +603,127 @@ export default function Dashboard() {
                           </span>
                         </div>
                       )}
+                      <div
+                        onClick={() => removeRow(i)}
+                        style={{ width: "28px", color: "#ccc", fontSize: "18px", cursor: "pointer", textAlign: "center", lineHeight: "1", userSelect: "none" }}
+                        title="Remove"
+                        onMouseEnter={(e) => e.currentTarget.style.color = "#dc3545"}
+                        onMouseLeave={(e) => e.currentTarget.style.color = "#ccc"}
+                      >&#10005;</div>
                     </div>
                   );
                 })}
               </div>
+
+              {/* Add Stop */}
+              {!showAddRow ? (
+                <button
+                  onClick={() => setShowAddRow(true)}
+                  style={{ ...s.cardBtnOutline, marginTop: "12px", color: "#11998e", borderColor: "#11998e", padding: "8px 18px", fontSize: "13px" }}
+                >
+                  + Add Stop
+                </button>
+              ) : (
+                <div style={{ marginTop: "12px", background: "#f8f9fc", borderRadius: "12px", padding: "16px", border: "1px solid #e5e7eb" }}>
+                  <div style={{ display: "flex", gap: "8px", alignItems: "flex-start", flexWrap: "wrap" }}>
+                    {/* Address with autocomplete */}
+                    <div style={{ flex: 3, position: "relative", minWidth: "160px" }}>
+                      <label style={{ fontSize: "11px", color: "#888", fontWeight: "600", marginBottom: "4px", display: "block" }}>ADDRESS</label>
+                      <input
+                        value={addAddr}
+                        onChange={(e) => handleAddrInput(e.target.value)}
+                        onFocus={() => { if (addrSuggestions.length) setShowAddrDropdown(true); }}
+                        onBlur={() => setTimeout(() => setShowAddrDropdown(false), 200)}
+                        placeholder="Start typing..."
+                        style={s.addInput}
+                      />
+                      {showAddrDropdown && addrSuggestions.length > 0 && (
+                        <div style={s.dropdown}>
+                          {addrSuggestions.map((item, idx) => (
+                            <div
+                              key={idx}
+                              onMouseDown={() => selectAddr(item)}
+                              style={s.dropdownItem}
+                            >
+                              {item.address}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Unit with autocomplete */}
+                    <div style={{ flex: 1, position: "relative", minWidth: "80px" }}>
+                      <label style={{ fontSize: "11px", color: "#888", fontWeight: "600", marginBottom: "4px", display: "block" }}>UNIT</label>
+                      <input
+                        value={addUnit}
+                        onChange={(e) => { setAddUnit(e.target.value); setShowUnitDropdown(false); }}
+                        onFocus={handleUnitFocus}
+                        onBlur={() => setTimeout(() => setShowUnitDropdown(false), 200)}
+                        placeholder="Unit"
+                        style={s.addInput}
+                      />
+                      {showUnitDropdown && unitSuggestions.length > 0 && (
+                        <div style={s.dropdown}>
+                          {unitSuggestions.map((u, idx) => (
+                            <div
+                              key={idx}
+                              onMouseDown={() => { setAddUnit(u); setShowUnitDropdown(false); }}
+                              style={s.dropdownItem}
+                            >
+                              {u}
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Entry method (auto-filled, editable) */}
+                    <div style={{ flex: 3, minWidth: "140px" }}>
+                      <label style={{ fontSize: "11px", color: "#888", fontWeight: "600", marginBottom: "4px", display: "block" }}>ENTRY METHOD</label>
+                      <input
+                        value={addEntry}
+                        onChange={(e) => setAddEntry(e.target.value)}
+                        placeholder="Auto-filled or type"
+                        style={s.addInput}
+                      />
+                    </div>
+
+                    {/* Type toggle */}
+                    <div style={{ minWidth: "120px" }}>
+                      <label style={{ fontSize: "11px", color: "#888", fontWeight: "600", marginBottom: "4px", display: "block" }}>TYPE</label>
+                      <div style={{ display: "flex", borderRadius: "8px", overflow: "hidden", border: "1px solid #e5e7eb" }}>
+                        <button
+                          onClick={() => setAddType("pickup")}
+                          style={{
+                            flex: 1, padding: "8px 6px", border: "none", fontSize: "11px", fontWeight: "700", cursor: "pointer",
+                            background: addType === "pickup" ? "#2e7d32" : "#fff",
+                            color: addType === "pickup" ? "#fff" : "#666",
+                          }}
+                        >PICK UP</button>
+                        <button
+                          onClick={() => setAddType("dropoff")}
+                          style={{
+                            flex: 1, padding: "8px 6px", border: "none", fontSize: "11px", fontWeight: "700", cursor: "pointer",
+                            borderLeft: "1px solid #e5e7eb",
+                            background: addType === "dropoff" ? "#c62828" : "#fff",
+                            color: addType === "dropoff" ? "#fff" : "#666",
+                          }}
+                        >DROP OFF</button>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "flex", gap: "8px", marginTop: "12px" }}>
+                    <button onClick={addRow} style={{ ...s.cardBtn, background: "#11998e", padding: "8px 20px", fontSize: "13px" }}>
+                      Add to List
+                    </button>
+                    <button onClick={() => { setShowAddRow(false); setAddAddr(""); setAddUnit(""); setAddEntry(""); }} style={{ ...s.cardBtnOutline, padding: "8px 20px", fontSize: "13px" }}>
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -1028,5 +1233,36 @@ const s = {
     borderRadius: "12px",
     padding: "16px",
     border: "1px solid #eee",
+  },
+
+  // ── Add Row ──
+  addInput: {
+    width: "100%",
+    padding: "8px 10px",
+    border: "1px solid #e5e7eb",
+    borderRadius: "8px",
+    fontSize: "13px",
+    boxSizing: "border-box",
+    outline: "none",
+  },
+  dropdown: {
+    position: "absolute",
+    top: "100%",
+    left: 0,
+    right: 0,
+    background: "#fff",
+    border: "1px solid #e5e7eb",
+    borderRadius: "8px",
+    marginTop: "2px",
+    maxHeight: "180px",
+    overflowY: "auto",
+    zIndex: 50,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
+  },
+  dropdownItem: {
+    padding: "8px 12px",
+    fontSize: "13px",
+    cursor: "pointer",
+    borderBottom: "1px solid #f5f5f5",
   },
 };
