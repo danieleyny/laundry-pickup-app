@@ -13,12 +13,14 @@ export async function GET() {
       GOOGLE_SHEET_ID_SET: !!process.env.GOOGLE_SHEET_ID,
       GOOGLE_SERVICE_ACCOUNT_EMAIL_SET: !!process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
       GOOGLE_PRIVATE_KEY_SET: !!process.env.GOOGLE_PRIVATE_KEY,
-      GOOGLE_PRIVATE_KEY_STARTS_WITH: key.substring(0, 30),
       GOOGLE_PRIVATE_KEY_HAS_REAL_NEWLINES: key.includes("\n") && !key.includes("\\n"),
       GOOGLE_PRIVATE_KEY_HAS_ESCAPED_NEWLINES: key.includes("\\n"),
       PARSED_KEY_STARTS_CORRECTLY: parsedKey.startsWith("-----BEGIN PRIVATE KEY-----"),
       PARSED_KEY_ENDS_CORRECTLY: parsedKey.trimEnd().endsWith("-----END PRIVATE KEY-----") || parsedKey.trimEnd().endsWith("-----END PRIVATE KEY-----\n"),
       NEXT_PUBLIC_APP_URL: process.env.NEXT_PUBLIC_APP_URL || "(not set)",
+      BLOB_READ_WRITE_TOKEN_SET: !!process.env.BLOB_READ_WRITE_TOKEN,
+      DRIVER_PIN_SET: !!process.env.DRIVER_PIN,
+      PHOTO_RETENTION_DAYS: process.env.PHOTO_RETENTION_DAYS || "30 (default)",
     },
   });
 }
