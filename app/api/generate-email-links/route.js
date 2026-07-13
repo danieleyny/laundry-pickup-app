@@ -15,12 +15,8 @@ export async function GET(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const config = AREA_CONFIG[area];
-  if (!config) {
-    return NextResponse.json({ error: "Invalid area: " + area }, { status: 400 });
-  }
-
   try {
+    const config = AREA_CONFIG[area];
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://your-app.vercel.app";
 
     let customers = await getCustomers(area);
