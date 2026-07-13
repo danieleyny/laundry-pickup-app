@@ -14,17 +14,22 @@ export async function GET(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const config = AREA_CONFIG[area];
+  if (!config) {
+    return NextResponse.json({ error: "Invalid area: " + area }, { status: 400 });
+  }
+
   try {
-    const config = AREA_CONFIG[area];
     const [customers, responses] = await Promise.all([
       getCustomers(area),
       getPickupResponses(area, week),
     ]);
 
-    // Find responses where the confirmed day is day2
+    // Find responses where the confirmed day is day2 (case-insensitive,
+    // consistent with the other routes)
     const day2Emails = new Set(
       responses
-        .filter((r) => r[3] === config.day2)
+        .filter((r) => r[3]?.toLowerCase() === config.day2.toLowerCase())
         .map((r) => r[2]?.toLowerCase())
         .filter(Boolean)
     );
