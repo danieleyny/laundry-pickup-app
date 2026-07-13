@@ -110,9 +110,13 @@ export async function GET(request) {
 
     for (const route of windowedRoutes) {
       const completed = route.entries; // already filtered to ones with time
-      weekSet.add(route.weekId);
+      // Only count days/weeks that actually had recorded stops, so empty legacy
+      // rows don't dilute the per-day / per-week averages.
       const routeEnd = completed.length ? completed[completed.length - 1].time : null;
-      if (routeEnd) daySet.add(etDate(routeEnd));
+      if (routeEnd) {
+        daySet.add(etDate(routeEnd));
+        weekSet.add(route.weekId);
+      }
       const collections = completed.filter((e) => e.status === "collected").length;
       const issuesAccess = completed.filter((e) => e.status === "access_unavailable").length;
       const issuesNoBag = completed.filter((e) => e.status === "no_bag").length;
