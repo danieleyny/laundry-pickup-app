@@ -170,7 +170,8 @@ async function handleCronRequest(request) {
   if (!dryRun && !isPreview && process.env.CLOUDINARY_CLOUD_NAME) {
     try {
       const [issuesCleanup, dropoffsCleanup] = await Promise.all([
-        deleteOldPhotos("Pickup Issues", 7),
+        // Policy: keep all driver photos at least 30 days.
+        deleteOldPhotos("Pickup Issues", 30),
         deleteOldPhotos("Dropoffs", 90),
       ]);
       cleanupResult = {
