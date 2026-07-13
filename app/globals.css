@@ -1,0 +1,37 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* CSS vars driven by dark mode (Tailwind .dark class on <html>) */
+:root {
+  --ldn-bg: #f4f6f3;
+  --ldn-surface: #ffffff;
+  --ldn-ink: #0f1a0a;
+  --ldn-ink-soft: #3d4a33;
+  --ldn-muted: #6b7569;
+  --ldn-border: #e5eae0;
+  --ldn-brand: #7cb342;
+  --ldn-brand-soft: #e8f5e9;
+}
+
+.dark {
+  --ldn-bg: #131711;
+  --ldn-surface: #1a1f18;
+  --ldn-ink: #e8f0e0;
+  --ldn-ink-soft: #b8c5b0;
+  --ldn-muted: #7a8270;
+  --ldn-border: #2f362b;
+  --ldn-brand: #8fc454;
+  --ldn-brand-soft: #2a3622;
+}
+
+html, body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--ldn-bg);
+  color: var(--ldn-ink);
+}
+
+* {
+  box-sizing: border-box;
+}
