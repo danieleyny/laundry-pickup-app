@@ -10,7 +10,7 @@ import { fireApproachAlerts } from "../../../../lib/eta-alerts";
 // POST /api/driver/progress
 // Body: { pin, day, key, status }
 //   key = "address|unit" (canonical stop identifier)
-//   status = "collected" | "access_unavailable" | "no_bag" | "pending"
+//   status = "collected" | "access_unavailable" | "no_bag" | "delivery_failed" | "pending"
 export async function POST(request) {
   const body = await request.json();
   const { pin, day, key, status } = body;

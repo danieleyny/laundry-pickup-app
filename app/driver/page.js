@@ -200,6 +200,7 @@ export default function DriverPage() {
       form.append("address", issueModal.stop.address);
       form.append("unit", issueModal.stop.unit || "");
       form.append("type", issueModal.type);
+      form.append("mode", issueModal.stop?.type === "dropoff" ? "dropoff" : "pickup");
       form.append("photo", file);
       const res = await fetch("/api/driver/issue", { method: "POST", body: form });
       if (!res.ok) throw new Error((await res.json()).error || "Failed to submit");
@@ -576,6 +577,7 @@ export default function DriverPage() {
               }}
               onAccessIssue={() => setIssueModal({ type: "access_unavailable", stop: currentStop })}
               onNoBag={() => setIssueModal({ type: "no_bag", stop: currentStop })}
+              onDeliveryFail={() => setIssueModal({ type: "delivery_failed", stop: currentStop })}
               onDirections={() => getDirections(currentStop.address)}
               submitting={submitting}
             />
@@ -649,7 +651,7 @@ export default function DriverPage() {
 
 // ─────────────────────────────────────────────────────────────────────
 
-function StopCard({ stop, idx, total, companions = [], onCollected, onAccessIssue, onNoBag, onDirections, submitting }) {
+function StopCard({ stop, idx, total, companions = [], onCollected, onAccessIssue, onNoBag, onDeliveryFail, onDirections, submitting }) {
   const isDropoff = stop.type === "dropoff";
   const accentColor = isDropoff ? PALETTE.dropoff : PALETTE.pickup;
   const accentSoft = isDropoff ? PALETTE.dropoffSoft : PALETTE.pickupSoft;
@@ -751,12 +753,19 @@ function StopCard({ stop, idx, total, companions = [], onCollected, onAccessIssu
             </button>
             <button onClick={onAccessIssue} disabled={submitting} style={s.secondaryAction}>
               <span style={s.secondaryIcon}>⊘</span>
-              <span style={s.secondaryLabel}>Can't enter</span>
+              <span style={s.secondaryLabel}>{isDropoff ? "Can't access" : "Can't enter"}</span>
             </button>
-            <button onClick={onNoBag} disabled={submitting} style={s.secondaryAction}>
-              <span style={s.secondaryIcon}>○</span>
-              <span style={s.secondaryLabel}>No bag</span>
-            </button>
+            {isDropoff ? (
+              <button onClick={onDeliveryFail} disabled={submitting} style={s.secondaryAction}>
+                <span style={s.secondaryIcon}>✕</span>
+                <span style={s.secondaryLabel}>Can't deliver</span>
+              </button>
+            ) : (
+              <button onClick={onNoBag} disabled={submitting} style={s.secondaryAction}>
+                <span style={s.secondaryIcon}>○</span>
+                <span style={s.secondaryLabel}>No bag</span>
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -919,11 +928,13 @@ function FullRouteList({ stops, onMove, onAddClick, saveStatus, dragIdx, onStart
           stop.status === "collected" ? "✓"
           : stop.status === "access_unavailable" ? "⊘"
           : stop.status === "no_bag" ? "○"
+          : stop.status === "delivery_failed" ? "✕"
           : "";
         const statusLabel =
           stop.status === "collected" ? "Done"
           : stop.status === "access_unavailable" ? "No access"
           : stop.status === "no_bag" ? "No bag"
+          : stop.status === "delivery_failed" ? "Not delivered"
           : "";
         const isFirst = i === 0;
         const isLast = i === stops.length - 1;
@@ -1142,9 +1153,16 @@ function DoneCard({ total, onShowFull }) {
 
 function IssueModal({ type, stop, onCancel, onSubmit, submitting, fileInputRef }) {
   const isAccess = type === "access_unavailable";
-  const title = isAccess ? "Can't enter the building" : "No bag at the door";
+  const isDelivery = type === "delivery_failed";
+  const title = isAccess
+    ? "Can't enter the building"
+    : isDelivery
+    ? "Couldn't complete delivery"
+    : "No bag at the door";
   const desc = isAccess
     ? "Take a photo of the intercom panel to confirm you were here."
+    : isDelivery
+    ? "Take a photo of the door or intercom to confirm the delivery attempt."
     : "Take a photo of the apartment door to confirm no bag was outside.";
 
   return (

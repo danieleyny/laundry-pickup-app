@@ -76,12 +76,13 @@ export async function GET(request) {
     let totalCollections = 0;
     let totalIssuesAccess = 0;
     let totalIssuesNoBag = 0;
+    let totalIssuesDelivery = 0;
     const allDeltasMs = [];
 
     const perRoute = [];
     const byArea = {
-      downtown: { stops: 0, collections: 0, issuesAccess: 0, issuesNoBag: 0, deltasMs: [] },
-      uptown: { stops: 0, collections: 0, issuesAccess: 0, issuesNoBag: 0, deltasMs: [] },
+      downtown: { stops: 0, collections: 0, issuesAccess: 0, issuesNoBag: 0, issuesDelivery: 0, deltasMs: [] },
+      uptown: { stops: 0, collections: 0, issuesAccess: 0, issuesNoBag: 0, issuesDelivery: 0, deltasMs: [] },
     };
 
     for (const route of routes) {
@@ -89,6 +90,7 @@ export async function GET(request) {
       const collections = completed.filter((e) => e.status === "collected").length;
       const issuesAccess = completed.filter((e) => e.status === "access_unavailable").length;
       const issuesNoBag = completed.filter((e) => e.status === "no_bag").length;
+      const issuesDelivery = completed.filter((e) => e.status === "delivery_failed").length;
 
       // Compute deltas between consecutive stops (first stop has no delta)
       const deltas = [];
@@ -115,6 +117,7 @@ export async function GET(request) {
         collections,
         issuesAccess,
         issuesNoBag,
+        issuesDelivery,
         avgMinutesPerStop: Math.round((avgDelta / 60000) * 10) / 10,
         totalDurationMinutes: Math.round(totalDuration / 60000),
         startTime: completed[0]?.time || null,
@@ -126,12 +129,14 @@ export async function GET(request) {
       totalCollections += collections;
       totalIssuesAccess += issuesAccess;
       totalIssuesNoBag += issuesNoBag;
+      totalIssuesDelivery += issuesDelivery;
 
       if (byArea[route.area]) {
         byArea[route.area].stops += completed.length;
         byArea[route.area].collections += collections;
         byArea[route.area].issuesAccess += issuesAccess;
         byArea[route.area].issuesNoBag += issuesNoBag;
+        byArea[route.area].issuesDelivery += issuesDelivery;
       }
     }
 
@@ -150,6 +155,7 @@ export async function GET(request) {
         totalCollections: a.collections,
         issuesAccess: a.issuesAccess,
         issuesNoBag: a.issuesNoBag,
+        issuesDelivery: a.issuesDelivery,
         avgMinutesPerStop: Math.round((avg / 60000) * 10) / 10,
       };
     }
@@ -178,10 +184,11 @@ export async function GET(request) {
         totalCollections,
         totalIssuesAccess,
         totalIssuesNoBag,
+        totalIssuesDelivery,
         avgMinutesPerStop: Math.round((overallAvgDelta / 60000) * 10) / 10,
         issueRatePct:
           totalStops > 0
-            ? Math.round(((totalIssuesAccess + totalIssuesNoBag) / totalStops) * 1000) / 10
+            ? Math.round(((totalIssuesAccess + totalIssuesNoBag + totalIssuesDelivery) / totalStops) * 1000) / 10
             : 0,
       },
       byArea: areaSummary,
@@ -189,7 +196,9 @@ export async function GET(request) {
       // Flat fields for the new AnalyticsTab StatTiles
       totalStops,
       collectedCount: totalCollections,
+      accessCount: totalIssuesAccess,
       noBagCount: totalIssuesNoBag,
+      deliveryFailedCount: totalIssuesDelivery,
       avgPerStopMin: Math.round((overallAvgDelta / 60000) * 10) / 10,
       dataQuality,
     });

@@ -114,8 +114,73 @@ ${reAttemptButton(reattemptLink, day2)}`
   return { subject, html, text };
 }
 
+// Build drop-off "can't access building" email — driver couldn't get inside to RETURN laundry.
+// No re-attempt link: the laundry is already washed and in our possession, so we ask the
+// customer to reach out rather than auto-scheduling a redelivery.
+function buildDropoffAccessEmail({ time }) {
+  const subject = "We tried to return your laundry today";
+  const html = shellHtml(`
+    <div style="text-align: center; padding: 14px 0 0;">
+      <h1 style="margin: 14px 0 10px; font-size: 24px; font-weight: 700; color: #1a1a1a;">We couldn't get into your building</h1>
+      <p style="margin: 0; font-size: 15px; color: #666; line-height: 1.55;">
+        Our driver came by at <strong>${time}</strong> today to return your freshly cleaned laundry, but couldn't get into your building. We buzzed your unit and a few neighbors but couldn't get in.
+      </p>
+      <p style="margin: 16px 0 0; font-size: 15px; color: #666; line-height: 1.55;">
+        Not to worry &mdash; your laundry is safe with us. Our driver will try again on the next pick up / drop off day.
+      </p>
+    </div>`);
+  const text = `Hi! Our driver came by at ${time} today to return your freshly cleaned laundry, but couldn't get into your building. We buzzed your unit and a few neighbors but couldn't get in.\n\nNot to worry — your laundry is safe with us. Our driver will try again on the next pick up / drop off day.`;
+  return { subject, html, text };
+}
+
+// Build drop-off "couldn't complete delivery" email — driver reached the door but
+// couldn't hand off / safely leave the clean laundry.
+function buildDeliveryFailedEmail({ time, unit }) {
+  const subject = "We couldn't complete your laundry delivery today";
+  const html = shellHtml(`
+    <div style="text-align: center; padding: 14px 0 0;">
+      <h1 style="margin: 14px 0 10px; font-size: 24px; font-weight: 700; color: #1a1a1a;">We couldn't complete your delivery</h1>
+      <p style="margin: 0; font-size: 15px; color: #666; line-height: 1.55;">
+        Our driver reached your building at <strong>${time}</strong> today to return your freshly cleaned laundry${
+          unit ? ` (Unit <strong>${unit}</strong>)` : ""
+        }, but couldn't complete the delivery.
+      </p>
+      <p style="margin: 16px 0 0; font-size: 15px; color: #666; line-height: 1.55;">
+        Not to worry &mdash; your laundry is safe with us. Our driver will try again on the next pick up / drop off day.
+      </p>
+    </div>`);
+  const text = `Hi! Our driver reached your building at ${time} today to return your freshly cleaned laundry${
+    unit ? ` (Unit ${unit})` : ""
+  }, but couldn't complete the delivery.\n\nNot to worry — your laundry is safe with us. Our driver will try again on the next pick up / drop off day.`;
+  return { subject, html, text };
+}
+
+// Pick the correct tenant email for an issue based on pick-up vs drop-off context.
+// Drop-offs never carry the re-attempt link (see builders above).
+function buildIssueEmail({ mode, type, time, area, day, isFirstDay, day2, unit, tenantEmail }) {
+  if (mode === "dropoff") {
+    return type === "access_unavailable"
+      ? buildDropoffAccessEmail({ time })
+      : buildDeliveryFailedEmail({ time, unit });
+  }
+  return type === "access_unavailable"
+    ? buildAccessEmail({ time, area, day, isFirstDay, day2, tenantEmail })
+    : buildNoBagEmail({ time, area, day, isFirstDay, day2, unit, tenantEmail });
+}
+
+// Human label for the admin/test-mode banner.
+function issueTypeLabel(type) {
+  return type === "access_unavailable"
+    ? "Can't access building"
+    : type === "delivery_failed"
+    ? "Couldn't complete delivery"
+    : "Bag not at door";
+}
+
 // POST /api/driver/issue — multipart form
-//   fields: pin, day, address, unit, type ("access_unavailable" | "no_bag")
+//   fields: pin, day, address, unit, mode ("pickup" | "dropoff"),
+//           type — pickup: "access_unavailable" | "no_bag";
+//                  dropoff: "access_unavailable" | "delivery_failed"
 //   file:   photo
 export async function POST(request) {
   const form = await request.formData();
@@ -124,6 +189,7 @@ export async function POST(request) {
   const address = form.get("address");
   const unit = form.get("unit") || "";
   const type = form.get("type");
+  const mode = (form.get("mode") || "pickup").toLowerCase();
   const photoFile = form.get("photo");
 
   const area = getAreaForPin(pin);
@@ -151,10 +217,9 @@ export async function POST(request) {
       const adminEmail = process.env.GMAIL_USER || "laundrydaynyc@gmail.com";
       if (tenantEmail) {
         const timeStr = formatET(new Date());
-        const built =
-          type === "access_unavailable"
-            ? buildAccessEmail({ time: timeStr, area, day, isFirstDay, day2: config.day2, tenantEmail })
-            : buildNoBagEmail({ time: timeStr, area, day, isFirstDay, day2: config.day2, unit, tenantEmail });
+        const built = buildIssueEmail({
+          mode, type, time: timeStr, area, day, isFirstDay, day2: config.day2, unit, tenantEmail,
+        });
         const testBanner = `
 <div style="background: #fff3cd; border: 1px solid #ffeaa7; border-radius: 10px; padding: 14px 18px; margin: 0 0 18px; font-family: Arial, sans-serif;">
   <p style="margin: 0 0 4px; font-size: 13px; font-weight: 700; color: #856404;">🧪 TEST MODE — Nothing was saved</p>
@@ -162,7 +227,7 @@ export async function POST(request) {
     Driver tapped the issue button while test mode is ON. No sheet rows, no photos uploaded.<br>
     <strong>Would-be recipient:</strong> ${tenantEmail}<br>
     <strong>Address:</strong> ${address}${unit ? `, Unit ${unit}` : ""}<br>
-    <strong>Issue type:</strong> ${type === "access_unavailable" ? "Can't access building" : "Bag not at door"}
+    <strong>Issue type:</strong> ${issueTypeLabel(type)}
   </p>
 </div>`;
         await sendEmail({
@@ -231,10 +296,9 @@ export async function POST(request) {
     if (tenantEmail) {
       try {
         const timeStr = formatET(new Date());
-        const built =
-          type === "access_unavailable"
-            ? buildAccessEmail({ time: timeStr, area, day, isFirstDay, day2: config.day2, tenantEmail })
-            : buildNoBagEmail({ time: timeStr, area, day, isFirstDay, day2: config.day2, unit, tenantEmail });
+        const built = buildIssueEmail({
+          mode, type, time: timeStr, area, day, isFirstDay, day2: config.day2, unit, tenantEmail,
+        });
 
         if (driverEmailsEnabled) {
           await sendEmail({
@@ -252,7 +316,7 @@ export async function POST(request) {
     This is the email that <strong>WOULD HAVE</strong> been sent to the tenant.<br>
     <strong>Intended recipient:</strong> ${tenantEmail}<br>
     <strong>Address:</strong> ${address}${unit ? `, Unit ${unit}` : ""}<br>
-    <strong>Issue type:</strong> ${type === "access_unavailable" ? "Can't access building" : "Bag not at door"}
+    <strong>Issue type:</strong> ${issueTypeLabel(type)}
   </p>
 </div>`;
           const wrappedHtml = testBanner + built.html;

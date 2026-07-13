@@ -107,7 +107,7 @@ export async function GET(request) {
     const completedCount = stops.filter((s) => s.status !== "pending").length;
     const collectionCount = stops.filter((s) => s.status === "collected").length;
     const issueCount = stops.filter(
-      (s) => s.status === "access_unavailable" || s.status === "no_bag"
+      (s) => s.status === "access_unavailable" || s.status === "no_bag" || s.status === "delivery_failed"
     ).length;
 
     // Find current stop (first pending) for "driver is at" indicator

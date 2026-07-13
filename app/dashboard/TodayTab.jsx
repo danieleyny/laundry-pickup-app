@@ -165,7 +165,7 @@ export function TodayTab({ pin, area, settings, onLoadSettings, apiFetch }) {
                       })
                     : "—";
                   const isCollected = s.status === "collected";
-                  const isIssue = s.status === "access_unavailable" || s.status === "no_bag";
+                  const isIssue = s.status === "access_unavailable" || s.status === "no_bag" || s.status === "delivery_failed";
                   const isCurrent = i === tracking.currentStopIdx;
                   return (
                     <div
@@ -191,7 +191,7 @@ export function TodayTab({ pin, area, settings, onLoadSettings, apiFetch }) {
                       </div>
                       <div className="flex-1">
                         {isCollected ? <Badge tone="success">✓ Done</Badge>
-                          : isIssue ? <Badge tone="danger">⊘ {s.status === "no_bag" ? "No bag" : "No access"}</Badge>
+                          : isIssue ? <Badge tone="danger">⊘ {s.status === "delivery_failed" ? "Not delivered" : s.status === "no_bag" ? "No bag" : "No access"}</Badge>
                           : isCurrent ? <Badge tone="brand">→ Current</Badge>
                           : <Badge tone="neutral">Pending</Badge>}
                       </div>
