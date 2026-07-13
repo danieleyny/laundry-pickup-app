@@ -17,8 +17,12 @@ export async function GET(request) {
     return NextResponse.json({ error: "Missing day parameter" }, { status: 400 });
   }
 
+  const config = AREA_CONFIG[area];
+  if (!config) {
+    return NextResponse.json({ error: "Invalid area: " + area }, { status: 400 });
+  }
+
   try {
-    const config = AREA_CONFIG[area];
     const [customers, keysMap, responses] = await Promise.all([
       getCustomers(area),
       getKeys(),

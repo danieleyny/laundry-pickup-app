@@ -28,10 +28,10 @@ export async function POST(request) {
     const SHEET_ID = process.env.GOOGLE_SHEET_ID;
     const tabName = "Pickup Responses";
 
-    // Read all rows
+    // Read all rows (unbounded range so rows past 500 aren't silently kept)
     const res = await sheets.spreadsheets.values.get({
       spreadsheetId: SHEET_ID,
-      range: `'${tabName}'!A1:F500`,
+      range: `'${tabName}'!A:F`,
     });
 
     const rows = res.data.values || [];
@@ -56,7 +56,7 @@ export async function POST(request) {
     // Clear the entire sheet and rewrite kept rows
     await sheets.spreadsheets.values.clear({
       spreadsheetId: SHEET_ID,
-      range: `'${tabName}'!A1:F500`,
+      range: `'${tabName}'!A:F`,
     });
 
     if (keep.length > 0) {
