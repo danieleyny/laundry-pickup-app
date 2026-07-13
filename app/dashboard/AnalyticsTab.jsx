@@ -8,6 +8,8 @@ export function AnalyticsTab({ pin, area, apiFetch }) {
   const [retention, setRetention] = useState(null);
   const [loading, setLoading] = useState(false);
   const [statsWindow, setStatsWindow] = useState("30"); // "7" | "30" | "365" | "all"
+  const [statsArea, setStatsArea] = useState("all"); // "all" | "downtown" | "uptown"
+  const [statsClean, setStatsClean] = useState(true); // exclude bulk-confirmed routes from timing
 
   useEffect(() => {
     let cancelled = false;
@@ -24,14 +26,14 @@ export function AnalyticsTab({ pin, area, apiFetch }) {
     return () => { cancelled = true; };
   }, [area]);
 
-  // Driver stats: refetch whenever the selected time window changes.
+  // Driver stats: refetch whenever the window, area, or outlier toggle changes.
   useEffect(() => {
     let cancelled = false;
-    apiFetch("/api/driver-stats", { days: statsWindow })
+    apiFetch("/api/driver-stats", { days: statsWindow, area: statsArea, clean: statsClean ? "1" : "0" })
       .then((s) => { if (!cancelled) setStats(s); })
       .catch(() => { if (!cancelled) setStats(null); });
     return () => { cancelled = true; };
-  }, [statsWindow, apiFetch]);
+  }, [statsWindow, statsArea, statsClean, apiFetch]);
 
   return (
     <div className="space-y-5">
@@ -92,46 +94,83 @@ export function AnalyticsTab({ pin, area, apiFetch }) {
       {/* Driver stats */}
       <Card>
         <CardBody>
-          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+          <div className="flex items-start justify-between flex-wrap gap-3 mb-4">
             <div>
               <p className="m-0 text-[10px] font-extrabold uppercase tracking-wider text-muted">Driver stats</p>
-              <h2 className="m-0 mt-1 text-xl font-extrabold text-ink">{stats?.window?.label || "All time"}</h2>
+              <h2 className="m-0 mt-1 text-xl font-extrabold text-ink capitalize">
+                {stats?.window?.label || "All time"}
+                {stats?.area && stats.area !== "all" ? ` · ${stats.area}` : ""}
+              </h2>
             </div>
-            <div className="flex rounded-lg border border-ldn-border overflow-hidden text-xs font-bold">
-              {[
-                { k: "7", label: "Week" },
-                { k: "30", label: "Month" },
-                { k: "365", label: "12 mo" },
-                { k: "all", label: "All" },
-              ].map((opt) => (
-                <button
-                  key={opt.k}
-                  onClick={() => setStatsWindow(opt.k)}
-                  className={
-                    "px-3 py-1.5 transition " +
-                    (statsWindow === opt.k ? "bg-brand text-white" : "bg-transparent text-muted hover:text-ink")
-                  }
-                >
-                  {opt.label}
+            <div className="flex flex-col items-end gap-2">
+              <div className="flex rounded-lg border border-ldn-border overflow-hidden text-xs font-bold">
+                {[{ k: "7", label: "Week" }, { k: "30", label: "Month" }, { k: "365", label: "12 mo" }, { k: "all", label: "All" }].map((opt) => (
+                  <button key={opt.k} onClick={() => setStatsWindow(opt.k)}
+                    className={"px-3 py-1.5 transition " + (statsWindow === opt.k ? "bg-brand text-white" : "bg-transparent text-muted hover:text-ink")}>
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex rounded-lg border border-ldn-border overflow-hidden text-xs font-bold">
+                  {[{ k: "all", label: "Both" }, { k: "downtown", label: "Downtown" }, { k: "uptown", label: "Uptown" }].map((opt) => (
+                    <button key={opt.k} onClick={() => setStatsArea(opt.k)}
+                      className={"px-3 py-1.5 transition " + (statsArea === opt.k ? "bg-brand text-white" : "bg-transparent text-muted hover:text-ink")}>
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+                <button onClick={() => setStatsClean((v) => !v)}
+                  title="Exclude bulk-confirmed routes (driver batch-marked stops) from timing"
+                  className={"px-3 py-1.5 rounded-lg border text-xs font-bold transition " + (statsClean ? "bg-brand/10 border-brand text-brand" : "border-ldn-border text-muted hover:text-ink")}>
+                  {statsClean ? "✓ Outliers excluded" : "All routes"}
                 </button>
-              ))}
+              </div>
             </div>
           </div>
           {stats && stats.totalStops > 0 ? (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 <StatTile label="Stops handled" value={stats.totalStops ?? 0} />
-                <StatTile label="Collected" value={stats.collectedCount ?? 0} tone="brand" />
+                <StatTile label="Avg route time" value={fmtDur(stats.summary?.avgRouteDurationMin)} tone="brand" />
                 <StatTile label="Avg per stop" value={stats.avgPerStopMin ? `${stats.avgPerStopMin}m` : "—"} />
+                <StatTile label="Collected" value={stats.collectedCount ?? 0} />
                 <StatTile label="Avg stops / day" value={stats.avgStopsPerDay ?? 0} />
                 <StatTile label="Avg stops / week" value={stats.avgStopsPerWeek ?? 0} />
                 <StatTile label="Access issues" value={stats.accessCount ?? 0} tone="warn" />
-                <StatTile label="No bag" value={stats.noBagCount ?? 0} tone="warn" />
                 <StatTile label="Not delivered" value={stats.deliveryFailedCount ?? 0} tone="danger" />
               </div>
+
+              {stats.byDay?.length > 0 && (
+                <div className="mt-5">
+                  <p className="m-0 text-[10px] font-extrabold uppercase tracking-wider text-muted mb-2">Time per route day</p>
+                  <div className="rounded-xl border border-ldn-border overflow-hidden">
+                    <div className="grid grid-cols-[1.6fr_0.7fr_0.9fr_1.3fr] px-3 py-2 text-[10px] font-extrabold uppercase tracking-wider text-muted border-b border-ldn-border">
+                      <div>Day</div>
+                      <div className="text-right">Routes</div>
+                      <div className="text-right">Avg stops</div>
+                      <div className="text-right">Avg total time</div>
+                    </div>
+                    {stats.byDay.map((d, i) => (
+                      <div key={i} className="grid grid-cols-[1.6fr_0.7fr_0.9fr_1.3fr] px-3 py-2 text-xs border-b border-ldn-border last:border-b-0 items-center">
+                        <div className="font-bold text-ink capitalize truncate">{d.area} · {d.day}</div>
+                        <div className="text-right text-muted">{d.routes}</div>
+                        <div className="text-right">{d.avgStops}</div>
+                        <div className="text-right font-bold text-ink">
+                          {fmtDur(d.avgDurationMin)}
+                          {d.avgMinutesPerStop != null && <span className="text-muted font-normal"> · {d.avgMinutesPerStop}m/stop</span>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               <p className="m-0 mt-3 text-[11px] text-muted">
                 {stats.window?.numDays ?? 0} operating days · {stats.window?.numWeeks ?? 0} weeks · {stats.summary?.totalRoutes ?? 0} routes
-                {stats.dataQuality ? ` · timing from ${stats.dataQuality.cleanRoutes}/${stats.dataQuality.totalRoutes} clean routes` : ""}
+                {statsClean && stats.bulkExcludedRoutes > 0
+                  ? ` · timing excludes ${stats.bulkExcludedRoutes} bulk-confirmed route${stats.bulkExcludedRoutes === 1 ? "" : "s"}`
+                  : ""}
               </p>
             </>
           ) : (
@@ -168,6 +207,12 @@ export function AnalyticsTab({ pin, area, apiFetch }) {
       </Card>
     </div>
   );
+}
+
+function fmtDur(min) {
+  if (min == null) return "—";
+  if (min < 60) return `${min}m`;
+  return `${Math.floor(min / 60)}h ${min % 60}m`;
 }
 
 function SparkBars({ data }) {
