@@ -19,6 +19,31 @@ function isBulkConfirmed(timesMs) {
   return false;
 }
 
+// Per-stop segment gap bounds (mirrors lib/eta-model): below 0.5 min = same
+// batch, above 45 min = a break/gap, not real per-stop time.
+const GAP_FLOOR_MS = 30 * 1000;
+const GAP_CEILING_MS = 45 * 60 * 1000;
+// A route's first→last span outside this range is a bad timestamp, not a real
+// route length — excluded from the duration averages.
+const DURATION_FLOOR_MIN = 2;
+const DURATION_CEILING_MIN = 600;
+
+const mean = (a) => (a.length ? a.reduce((x, y) => x + y, 0) / a.length : 0);
+// Tukey IQR fence — drops remaining outlier segments after the gap bounds.
+function filterIqr(arr) {
+  if (arr.length < 4) return arr;
+  const s = [...arr].sort((a, b) => a - b);
+  const n = s.length;
+  const q1 = s[Math.floor((n - 1) * 0.25)];
+  const q3 = s[Math.floor((n - 1) * 0.75)];
+  const r = q3 - q1;
+  return arr.filter((v) => v >= q1 - 1.5 * r && v <= q3 + 1.5 * r);
+}
+const avgPerStopMinFrom = (deltasMs) => {
+  const f = filterIqr(deltasMs);
+  return f.length ? Math.round((mean(f) / 60000) * 10) / 10 : null;
+};
+
 // GET /api/driver-stats?pin=ADMIN_PIN[&days=7|30|90|365|all][&area=downtown|uptown|all][&clean=1]
 // Aggregates driver progress into summary stats over the requested time window
 // (default: all-time), optionally filtered to one area. Bucketed by last-activity
@@ -156,11 +181,12 @@ export async function GET(request) {
       const issuesNoBag = completed.filter((e) => e.status === "no_bag").length;
       const issuesDelivery = completed.filter((e) => e.status === "delivery_failed").length;
 
-      // Compute deltas between consecutive stops (first stop has no delta)
+      // Per-stop segment gaps (drop same-batch <0.5m and break/gap >45m). These
+      // feed the pace metric, which excludes bulk-confirmed routes when clean=1.
       const deltas = [];
       for (let i = 1; i < completed.length; i++) {
         const d = new Date(completed[i].time) - new Date(completed[i - 1].time);
-        if (d > 0 && d < 60 * 60 * 1000) { // skip zero/negative and >1 hour outliers
+        if (d >= GAP_FLOOR_MS && d <= GAP_CEILING_MS) {
           deltas.push(d);
           if (timingOk) {
             allDeltasMs.push(d);
@@ -169,22 +195,21 @@ export async function GET(request) {
           }
         }
       }
+      const avgDelta = deltas.length ? mean(deltas) : 0;
 
-      const avgDelta = deltas.length ? deltas.reduce((a, b) => a + b, 0) / deltas.length : 0;
-      const totalDuration =
+      // Total time on the route (first stop → last stop). The span reflects when
+      // the driver started vs finished, so batch-marking doesn't invalidate it —
+      // include every route, but drop implausible spans (bad timestamps).
+      const spanMin =
         completed.length > 1
-          ? new Date(completed[completed.length - 1].time) - new Date(completed[0].time)
-          : 0;
-
-      // Total time on this route (first stop → last stop), timing-eligible only.
-      if (completed.length > 1) {
-        if (timingOk) {
-          routeDurationsMin.push(totalDuration / 60000);
-          byDay[dkey].durationsMin.push(totalDuration / 60000);
-        } else {
-          byDay[dkey].bulkExcluded++;
-        }
+          ? (new Date(completed[completed.length - 1].time) - new Date(completed[0].time)) / 60000
+          : null;
+      const durationOk = spanMin != null && spanMin >= DURATION_FLOOR_MIN && spanMin <= DURATION_CEILING_MIN;
+      if (durationOk) {
+        routeDurationsMin.push(spanMin);
+        byDay[dkey].durationsMin.push(spanMin);
       }
+      if (clean && route.bulkConfirmed) byDay[dkey].bulkExcluded++;
       byDay[dkey].routes++;
       byDay[dkey].stops += completed.length;
 
@@ -199,7 +224,7 @@ export async function GET(request) {
         issuesDelivery,
         bulkConfirmed: route.bulkConfirmed,
         avgMinutesPerStop: Math.round((avgDelta / 60000) * 10) / 10,
-        totalDurationMinutes: Math.round(totalDuration / 60000),
+        totalDurationMinutes: spanMin != null ? Math.round(spanMin) : 0,
         startTime: completed[0]?.time || null,
         endTime: completed[completed.length - 1]?.time || null,
       });
@@ -231,15 +256,13 @@ export async function GET(request) {
         routes: d.routes,
         avgStops: d.routes ? Math.round((d.stops / d.routes) * 10) / 10 : 0,
         avgDurationMin: d.durationsMin.length ? Math.round(avgList(d.durationsMin)) : null,
-        avgMinutesPerStop: d.deltasMs.length ? Math.round((avgList(d.deltasMs) / 60000) * 10) / 10 : null,
-        timingRoutes: d.durationsMin.length,
+        avgMinutesPerStop: avgPerStopMinFrom(d.deltasMs),
+        durationRoutes: d.durationsMin.length,
         bulkExcluded: d.bulkExcluded,
       }))
       .sort((a, b) => a.area.localeCompare(b.area) || DOW.indexOf(a.day) - DOW.indexOf(b.day));
 
-    const overallAvgDelta = allDeltasMs.length
-      ? allDeltasMs.reduce((a, b) => a + b, 0) / allDeltasMs.length
-      : 0;
+    const overallPaceMin = avgPerStopMinFrom(allDeltasMs); // IQR-filtered mean, null if no data
 
     const numDays = daySet.size;
     const numWeeks = weekSet.size;
@@ -249,16 +272,13 @@ export async function GET(request) {
     const areaSummary = {};
     for (const area of ["downtown", "uptown"]) {
       const a = byArea[area];
-      const avg = a.deltasMs.length
-        ? a.deltasMs.reduce((x, y) => x + y, 0) / a.deltasMs.length
-        : 0;
       areaSummary[area] = {
         totalStops: a.stops,
         totalCollections: a.collections,
         issuesAccess: a.issuesAccess,
         issuesNoBag: a.issuesNoBag,
         issuesDelivery: a.issuesDelivery,
-        avgMinutesPerStop: Math.round((avg / 60000) * 10) / 10,
+        avgMinutesPerStop: avgPerStopMinFrom(a.deltasMs) ?? 0,
       };
     }
 
@@ -292,7 +312,7 @@ export async function GET(request) {
         totalIssuesAccess,
         totalIssuesNoBag,
         totalIssuesDelivery,
-        avgMinutesPerStop: Math.round((overallAvgDelta / 60000) * 10) / 10,
+        avgMinutesPerStop: overallPaceMin ?? 0,
         avgRouteDurationMin,
         avgStopsPerDay,
         avgStopsPerWeek,
@@ -312,7 +332,7 @@ export async function GET(request) {
       accessCount: totalIssuesAccess,
       noBagCount: totalIssuesNoBag,
       deliveryFailedCount: totalIssuesDelivery,
-      avgPerStopMin: Math.round((overallAvgDelta / 60000) * 10) / 10,
+      avgPerStopMin: overallPaceMin ?? 0,
       avgRouteDurationMin,
       avgStopsPerDay,
       avgStopsPerWeek,
