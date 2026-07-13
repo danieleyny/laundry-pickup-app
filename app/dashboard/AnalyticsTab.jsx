@@ -7,23 +7,31 @@ export function AnalyticsTab({ pin, area, apiFetch }) {
   const [bounces, setBounces] = useState(null);
   const [retention, setRetention] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [statsWindow, setStatsWindow] = useState("30"); // "7" | "30" | "365" | "all"
 
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
     Promise.all([
-      apiFetch("/api/driver-stats").catch(() => null),
       apiFetch("/api/admin/bounces").catch(() => null),
       apiFetch("/api/admin/retention", { area }).catch(() => null),
-    ]).then(([s, b, r]) => {
+    ]).then(([b, r]) => {
       if (cancelled) return;
-      setStats(s);
       setBounces(b);
       setRetention(r);
       setLoading(false);
     });
     return () => { cancelled = true; };
   }, [area]);
+
+  // Driver stats: refetch whenever the selected time window changes.
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch("/api/driver-stats", { days: statsWindow })
+      .then((s) => { if (!cancelled) setStats(s); })
+      .catch(() => { if (!cancelled) setStats(null); });
+    return () => { cancelled = true; };
+  }, [statsWindow, apiFetch]);
 
   return (
     <div className="space-y-5">
@@ -84,20 +92,52 @@ export function AnalyticsTab({ pin, area, apiFetch }) {
       {/* Driver stats */}
       <Card>
         <CardBody>
-          <p className="m-0 text-[10px] font-extrabold uppercase tracking-wider text-muted">Driver stats</p>
-          <h2 className="m-0 mt-1 text-xl font-extrabold text-ink mb-4">Last 30 days</h2>
-          {stats ? (
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-              <StatTile label="Stops handled" value={stats.totalStops ?? 0} />
-              <StatTile label="Collected" value={stats.collectedCount ?? 0} tone="brand" />
-              <StatTile label="No bag" value={stats.noBagCount ?? 0} tone="warn" />
-              <StatTile label="Avg per stop" value={stats.avgPerStopMin ? `${stats.avgPerStopMin}m` : "—"} />
-              {stats.dataQuality && (
-                <StatTile label="Routes used (timing)" value={`${stats.dataQuality.cleanRoutes}/${stats.dataQuality.totalRoutes}`} sublabel={`${stats.dataQuality.outlierRoutes} excluded`} />
-              )}
+          <div className="flex items-center justify-between flex-wrap gap-2 mb-4">
+            <div>
+              <p className="m-0 text-[10px] font-extrabold uppercase tracking-wider text-muted">Driver stats</p>
+              <h2 className="m-0 mt-1 text-xl font-extrabold text-ink">{stats?.window?.label || "All time"}</h2>
             </div>
+            <div className="flex rounded-lg border border-ldn-border overflow-hidden text-xs font-bold">
+              {[
+                { k: "7", label: "Week" },
+                { k: "30", label: "Month" },
+                { k: "365", label: "12 mo" },
+                { k: "all", label: "All" },
+              ].map((opt) => (
+                <button
+                  key={opt.k}
+                  onClick={() => setStatsWindow(opt.k)}
+                  className={
+                    "px-3 py-1.5 transition " +
+                    (statsWindow === opt.k ? "bg-brand text-white" : "bg-transparent text-muted hover:text-ink")
+                  }
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {stats && stats.totalStops > 0 ? (
+            <>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <StatTile label="Stops handled" value={stats.totalStops ?? 0} />
+                <StatTile label="Collected" value={stats.collectedCount ?? 0} tone="brand" />
+                <StatTile label="Avg per stop" value={stats.avgPerStopMin ? `${stats.avgPerStopMin}m` : "—"} />
+                <StatTile label="Avg stops / day" value={stats.avgStopsPerDay ?? 0} />
+                <StatTile label="Avg stops / week" value={stats.avgStopsPerWeek ?? 0} />
+                <StatTile label="Access issues" value={stats.accessCount ?? 0} tone="warn" />
+                <StatTile label="No bag" value={stats.noBagCount ?? 0} tone="warn" />
+                <StatTile label="Not delivered" value={stats.deliveryFailedCount ?? 0} tone="danger" />
+              </div>
+              <p className="m-0 mt-3 text-[11px] text-muted">
+                {stats.window?.numDays ?? 0} operating days · {stats.window?.numWeeks ?? 0} weeks · {stats.summary?.totalRoutes ?? 0} routes
+                {stats.dataQuality ? ` · timing from ${stats.dataQuality.cleanRoutes}/${stats.dataQuality.totalRoutes} clean routes` : ""}
+              </p>
+            </>
           ) : (
-            <p className="text-muted text-sm">{loading ? "Loading…" : "No driver activity yet"}</p>
+            <p className="text-muted text-sm">
+              {stats ? "No driver activity in this period" : loading ? "Loading…" : "No driver activity yet"}
+            </p>
           )}
         </CardBody>
       </Card>

@@ -5,15 +5,22 @@ import { buildEtaProfile } from "../../../lib/eta-model";
 // Force dynamic rendering — this route uses request data and must not be statically optimized
 export const dynamic = "force-dynamic";
 
-// GET /api/driver-stats?pin=ADMIN_PIN
-// Aggregates driver progress data across all routes into summary stats.
-// Computes time-per-stop from consecutive marked timestamps within each route.
+// GET /api/driver-stats?pin=ADMIN_PIN[&days=7|30|90|365|all]
+// Aggregates driver progress into summary stats over the requested time window
+// (default: all-time). Routes are bucketed by their last-activity timestamp.
+// Computes time-per-stop from consecutive marked timestamps within each route,
+// plus per-day and per-week stop averages across the window.
 export async function GET(request) {
   const { searchParams } = new URL(request.url);
   const pin = searchParams.get("pin");
   if (pin !== process.env.ADMIN_PIN) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  // Optional time window: ?days=7 | 30 | 90 | 365; omitted or "all" → all-time.
+  const daysParam = searchParams.get("days");
+  const windowDays = daysParam && daysParam !== "all" ? parseInt(daysParam, 10) : null;
+  const cutoffMs = windowDays && windowDays > 0 ? Date.now() - windowDays * 24 * 60 * 60 * 1000 : null;
 
   try {
     const sheets = google.sheets({
@@ -70,6 +77,22 @@ export async function GET(request) {
       routes.push({ weekId, area, day, entries });
     }
 
+    // Apply the requested time window (by each route's last-activity timestamp).
+    const routeEndMs = (route) =>
+      route.entries.length ? new Date(route.entries[route.entries.length - 1].time).getTime() : null;
+    const windowedRoutes = cutoffMs
+      ? routes.filter((r) => {
+          const e = routeEndMs(r);
+          return e !== null && e >= cutoffMs;
+        })
+      : routes;
+
+    // Distinct operating days (ET calendar date) and ISO weeks in the window,
+    // used for the per-day / per-week stop averages.
+    const etDate = (iso) => new Date(iso).toLocaleDateString("en-CA", { timeZone: "America/New_York" });
+    const daySet = new Set();
+    const weekSet = new Set();
+
     // Aggregate
     let totalStops = 0;
     let totalCompleted = 0;
@@ -85,8 +108,11 @@ export async function GET(request) {
       uptown: { stops: 0, collections: 0, issuesAccess: 0, issuesNoBag: 0, issuesDelivery: 0, deltasMs: [] },
     };
 
-    for (const route of routes) {
+    for (const route of windowedRoutes) {
       const completed = route.entries; // already filtered to ones with time
+      weekSet.add(route.weekId);
+      const routeEnd = completed.length ? completed[completed.length - 1].time : null;
+      if (routeEnd) daySet.add(etDate(routeEnd));
       const collections = completed.filter((e) => e.status === "collected").length;
       const issuesAccess = completed.filter((e) => e.status === "access_unavailable").length;
       const issuesNoBag = completed.filter((e) => e.status === "no_bag").length;
@@ -144,6 +170,11 @@ export async function GET(request) {
       ? allDeltasMs.reduce((a, b) => a + b, 0) / allDeltasMs.length
       : 0;
 
+    const numDays = daySet.size;
+    const numWeeks = weekSet.size;
+    const avgStopsPerDay = numDays ? Math.round((totalStops / numDays) * 10) / 10 : 0;
+    const avgStopsPerWeek = numWeeks ? Math.round((totalStops / numWeeks) * 10) / 10 : 0;
+
     const areaSummary = {};
     for (const area of ["downtown", "uptown"]) {
       const a = byArea[area];
@@ -178,14 +209,19 @@ export async function GET(request) {
     } catch {}
 
     return NextResponse.json({
+      window: { days: windowDays, label: windowLabel(windowDays), numDays, numWeeks },
       summary: {
-        totalRoutes: routes.length,
+        totalRoutes: windowedRoutes.length,
         totalStops,
         totalCollections,
         totalIssuesAccess,
         totalIssuesNoBag,
         totalIssuesDelivery,
         avgMinutesPerStop: Math.round((overallAvgDelta / 60000) * 10) / 10,
+        avgStopsPerDay,
+        avgStopsPerWeek,
+        numDays,
+        numWeeks,
         issueRatePct:
           totalStops > 0
             ? Math.round(((totalIssuesAccess + totalIssuesNoBag + totalIssuesDelivery) / totalStops) * 1000) / 10
@@ -193,13 +229,17 @@ export async function GET(request) {
       },
       byArea: areaSummary,
       routes: perRoute,
-      // Flat fields for the new AnalyticsTab StatTiles
+      // Flat fields for the AnalyticsTab StatTiles
       totalStops,
       collectedCount: totalCollections,
       accessCount: totalIssuesAccess,
       noBagCount: totalIssuesNoBag,
       deliveryFailedCount: totalIssuesDelivery,
       avgPerStopMin: Math.round((overallAvgDelta / 60000) * 10) / 10,
+      avgStopsPerDay,
+      avgStopsPerWeek,
+      numDays,
+      numWeeks,
       dataQuality,
     });
   } catch (err) {
@@ -208,8 +248,18 @@ export async function GET(request) {
   }
 }
 
+function windowLabel(days) {
+  if (!days) return "All time";
+  if (days <= 7) return "Last 7 days";
+  if (days <= 31) return "Last 30 days";
+  if (days <= 92) return "Last 90 days";
+  if (days <= 366) return "Last 12 months";
+  return `Last ${days} days`;
+}
+
 function emptyStats() {
   return {
+    window: { days: null, label: "All time", numDays: 0, numWeeks: 0 },
     summary: {
       totalRoutes: 0,
       totalStops: 0,
