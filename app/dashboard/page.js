@@ -17,7 +17,6 @@ export default function Dashboard() {
   const [copied, setCopied] = useState("");
   const [dragIdx, setDragIdx] = useState(null);
   const [emailType, setEmailType] = useState("full"); // "full" or "remaining"
-  const [photosData, setPhotosData] = useState(null);
 
   // Add-row state
   const [showAddRow, setShowAddRow] = useState(false);
@@ -116,32 +115,6 @@ export default function Dashboard() {
       setError(err.message);
     }
     setLoading(false);
-  };
-
-  const loadPhotos = async (day) => {
-    setLoading(true);
-    setError("");
-    try {
-      const data = await apiFetch("/api/photos", day ? { day } : {});
-      setPhotosData(data);
-    } catch (err) {
-      setError(err.message);
-    }
-    setLoading(false);
-  };
-
-  const formatPhotoTime = (ts) => {
-    try {
-      return new Date(ts).toLocaleString("en-US", {
-        timeZone: "America/New_York",
-        month: "short",
-        day: "numeric",
-        hour: "numeric",
-        minute: "2-digit",
-      });
-    } catch {
-      return ts;
-    }
   };
 
   const BASE_URL = "https://pickup.laundryday.nyc";
@@ -271,7 +244,6 @@ export default function Dashboard() {
     truck: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M14 18V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v11a1 1 0 0 0 1 1h2"/><path d="M15 18H9"/><path d="M19 18h2a1 1 0 0 0 1-1v-3.65a1 1 0 0 0-.22-.624l-3.48-4.35A1 1 0 0 0 17.52 8H14"/><circle cx="17" cy="18" r="2"/><circle cx="7" cy="18" r="2"/></svg>,
     chart: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M12 20V10"/><path d="M18 20V4"/><path d="M6 20v-4"/></svg>,
     refresh: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M3 21v-5h5"/></svg>,
-    camera: <svg width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" viewBox="0 0 24 24"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>,
   };
 
   // LOGIN SCREEN
@@ -316,14 +288,14 @@ export default function Dashboard() {
         </div>
         <div style={s.areaToggle}>
           <button
-            onClick={() => { setArea("uptown"); setPickupList(null); setRemainingData(null); setEmailLinks(null); setDay2Confirmations(null); setPhotosData(null); setAddressData(null); }}
+            onClick={() => { setArea("uptown"); setPickupList(null); setRemainingData(null); setEmailLinks(null); setDay2Confirmations(null); }}
             style={area === "uptown" ? s.areaActive : s.areaBtn}
           >
             Uptown
             <span style={s.areaDays}>{area === "uptown" ? "Fri / Sat" : "Fri / Sat"}</span>
           </button>
           <button
-            onClick={() => { setArea("downtown"); setPickupList(null); setRemainingData(null); setEmailLinks(null); setDay2Confirmations(null); setPhotosData(null); setAddressData(null); }}
+            onClick={() => { setArea("downtown"); setPickupList(null); setRemainingData(null); setEmailLinks(null); setDay2Confirmations(null); }}
             style={area === "downtown" ? s.areaActive : s.areaBtn}
           >
             Downtown
@@ -397,28 +369,8 @@ export default function Dashboard() {
             ),
           },
           {
-            icon: icons.camera,
-            num: "4",
-            title: "Driver Photos",
-            desc: "View pickup, drop-off, and issue photos from drivers. Photos are kept for 30 days.",
-            color: "#e91e63",
-            actions: (
-              <>
-                <button onClick={() => loadPhotos(config.day1)} style={{ ...s.cardBtn, background: "#e91e63" }}>
-                  {config.day1} Photos
-                </button>
-                <button onClick={() => loadPhotos(config.day2)} style={{ ...s.cardBtnOutline, color: "#e91e63", borderColor: "#e91e63" }}>
-                  {config.day2} Photos
-                </button>
-                <button onClick={() => loadPhotos(null)} style={s.cardBtnOutline}>
-                  All This Week
-                </button>
-              </>
-            ),
-          },
-          {
             icon: icons.refresh,
-            num: "5",
+            num: "4",
             title: "Reset for New Week",
             desc: `Clear all ${area} pickup responses for this week so you can start fresh.`,
             color: "#dc3545",
@@ -460,7 +412,7 @@ export default function Dashboard() {
                 onClick={() => copyToClipboard(emailLinks.bccEmails, "bcc")}
                 style={s.copyBtn}
               >
-                {copied === "bcc" ? "✓ Copied!" : `Copy ${emailLinks.totalCustomers} Emails`}
+                {copied === "bcc" ? "&#10003; Copied!" : `Copy ${emailLinks.totalCustomers} Emails`}
               </button>
               <textarea readOnly value={emailLinks.bccEmails} style={s.textarea} rows={3} />
             </div>
@@ -473,7 +425,7 @@ export default function Dashboard() {
                 onClick={() => copyToClipboard(getEmailSubject(), "subject")}
                 style={s.copyBtn}
               >
-                {copied === "subject" ? "✓ Copied!" : "Copy Subject"}
+                {copied === "subject" ? "&#10003; Copied!" : "Copy Subject"}
               </button>
               <textarea readOnly value={getEmailSubject()} style={s.textarea} rows={1} />
             </div>
@@ -486,7 +438,7 @@ export default function Dashboard() {
                 onClick={() => copyToClipboard(getEmailBody(), "body")}
                 style={s.copyBtn}
               >
-                {copied === "body" ? "✓ Copied!" : "Copy Email Body"}
+                {copied === "body" ? "&#10003; Copied!" : "Copy Email Body"}
               </button>
               <textarea
                 readOnly
@@ -517,19 +469,19 @@ export default function Dashboard() {
                   onClick={() => copyToClipboard(day2Confirmations.emailString, "day2bcc")}
                   style={{ ...s.copyBtn, width: "auto" }}
                 >
-                  {copied === "day2bcc" ? "✓ Copied!" : `Copy ${day2Confirmations.totalConfirmed} Emails`}
+                  {copied === "day2bcc" ? "&#10003; Copied!" : `Copy ${day2Confirmations.totalConfirmed} Emails`}
                 </button>
                 <button
                   onClick={() => copyToClipboard("Confirmed For Pick Up Today", "day2subject")}
                   style={{ ...s.copyBtn, width: "auto", background: "linear-gradient(135deg, #11998e, #38ef7d)" }}
                 >
-                  {copied === "day2subject" ? "✓ Copied!" : "Copy Subject"}
+                  {copied === "day2subject" ? "&#10003; Copied!" : "Copy Subject"}
                 </button>
                 <button
                   onClick={() => copyToClipboard("Hello! You are confirmed for pick up today! Please remember to make sure your bag is left out before 10am to ensure collection. As a reminder - the exact time that your bag will be collected varies depending on our drivers route for the day and the amount of traffic they face. Thank you for signing up!", "day2body")}
                   style={{ ...s.copyBtn, width: "auto", background: "linear-gradient(135deg, #764ba2, #667eea)" }}
                 >
-                  {copied === "day2body" ? "✓ Copied!" : "Copy Email Body"}
+                  {copied === "day2body" ? "&#10003; Copied!" : "Copy Email Body"}
                 </button>
               </div>
               <p style={{ margin: "0 0 6px", fontSize: "12px", color: "#888", fontWeight: "600" }}>SUBJECT</p>
@@ -580,7 +532,6 @@ export default function Dashboard() {
                           pin,
                         }),
                       });
-                      if (!res.ok) throw new Error(`Server returned ${res.status}`);
                       const blob = await res.blob();
                       const url = URL.createObjectURL(blob);
                       const a = document.createElement("a");
@@ -778,52 +729,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Driver Photos Results */}
-      {photosData && (
-        <div style={s.resultSection}>
-          <div style={s.resultHeader}>
-            <h2 style={s.resultTitle}>
-              Driver Photos{photosData.day ? ` — ${photosData.day}` : ""}
-            </h2>
-            <span style={s.badge}>{photosData.photos.length} photo(s)</span>
-          </div>
-          <p style={s.resultSub}>
-            Week {photosData.week} &middot; photos auto-delete after {photosData.retentionDays} days
-          </p>
-          {photosData.photos.length === 0 ? (
-            <div style={s.emptyState}>
-              <p>No photos yet{photosData.day ? ` for ${photosData.day}` : " this week"}. Drivers upload them at <strong>/driver</strong>.</p>
-            </div>
-          ) : (
-            <div style={s.photoGrid}>
-              {photosData.photos.map((p, i) => (
-                <div key={i} style={s.photoCard}>
-                  <a href={p.url} target="_blank" rel="noreferrer">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={p.url} alt={p.address} style={s.photoImg} loading="lazy" />
-                  </a>
-                  <div style={{ padding: "10px 12px" }}>
-                    <div style={{ fontWeight: "600", fontSize: "13px", color: "#1a1a2e" }}>
-                      {p.address}{p.unit ? ` · ${p.unit}` : ""}
-                    </div>
-                    <div style={{ display: "flex", gap: "6px", marginTop: "6px", flexWrap: "wrap", alignItems: "center" }}>
-                      <span style={p.type === "pickup" ? s.typeBadge.pickup : p.type === "issue" ? s.typeBadge.issue : s.typeBadge.dropoff}>
-                        {p.type === "pickup" ? "PICK UP" : p.type === "issue" ? "ISSUE" : "DROP OFF"}
-                      </span>
-                      {p.status === "no_bag" && <span style={s.typeBadge.nobag}>NO BAG</span>}
-                      <span style={{ fontSize: "11px", color: "#999" }}>{formatPhotoTime(p.timestamp)}</span>
-                    </div>
-                    {p.note && (
-                      <div style={{ fontSize: "12px", color: "#777", marginTop: "6px", fontStyle: "italic" }}>{p.note}</div>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* Weekly Status Results */}
       {remainingData && (
         <div style={s.resultSection}>
@@ -861,7 +766,7 @@ export default function Dashboard() {
                   onClick={() => copyToClipboard(remainingData.emailString, "remaining")}
                   style={s.copyBtnSm}
                 >
-                  {copied === "remaining" ? "✓ Copied!" : `Copy ${remainingData.totalRemaining} Emails`}
+                  {copied === "remaining" ? "&#10003; Copied!" : `Copy ${remainingData.totalRemaining} Emails`}
                 </button>
               </div>
               <textarea readOnly value={remainingData.emailString} style={s.textarea} rows={3} />
@@ -1280,48 +1185,6 @@ const s = {
       fontWeight: "700",
       letterSpacing: "0.3px",
     },
-    issue: {
-      display: "inline-block",
-      background: "#f57c00",
-      color: "#fff",
-      padding: "3px 10px",
-      borderRadius: "6px",
-      fontSize: "11px",
-      fontWeight: "700",
-      letterSpacing: "0.3px",
-    },
-    nobag: {
-      display: "inline-block",
-      background: "#ffebee",
-      color: "#c62828",
-      padding: "3px 10px",
-      borderRadius: "6px",
-      fontSize: "11px",
-      fontWeight: "700",
-      letterSpacing: "0.3px",
-      border: "1px solid #ef9a9a",
-    },
-  },
-
-  // ── Driver Photos ──
-  photoGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))",
-    gap: "14px",
-    marginTop: "16px",
-  },
-  photoCard: {
-    borderRadius: "12px",
-    overflow: "hidden",
-    border: "1px solid #e5e7eb",
-    background: "#fff",
-  },
-  photoImg: {
-    width: "100%",
-    height: "150px",
-    objectFit: "cover",
-    display: "block",
-    background: "#f0f1f5",
   },
 
   // ── Stats ──

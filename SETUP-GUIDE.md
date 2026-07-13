@@ -146,55 +146,11 @@ The app will try to create this automatically on first use, but if it doesn't:
 
 ---
 
-## Driver Photos (Pickup / Drop-off / Issue Confirmation)
-
-Drivers photograph every pickup, drop-off, and any issue. Photos are stored
-for **at least 30 days** and then deleted automatically by a daily cleanup job.
-
-**Where things live:**
-- **Image files** → Vercel Blob storage (public but unguessable URLs)
-- **Metadata** (address, unit, type, status, time, photo link) → a **"Photos"
-  tab** in your Google Sheet (created automatically on first upload)
-
-### One-time setup
-
-1. In your Vercel project, go to **Storage → Create Database → Blob** and
-   connect the store to this project. Vercel sets `BLOB_READ_WRITE_TOKEN`
-   automatically.
-2. Add these environment variables in Vercel:
-
-| Variable | Value |
-|----------|-------|
-| `DRIVER_PIN` | A PIN just for drivers (photo upload only). Optional — falls back to `ADMIN_PIN`. |
-| `PHOTO_RETENTION_DAYS` | How long photos are kept. Default `30`. The app never deletes anything younger than 30 days, even if you set this lower. |
-| `CRON_SECRET` | Any long random string. Vercel Cron uses it to authenticate the daily cleanup call. |
-
-3. Redeploy. The daily cleanup cron (`vercel.json` → `/api/photos/cleanup`,
-   8:00 UTC / ~3-4am ET) starts running automatically.
-
-### How drivers use it
-
-Drivers open **`https://your-app.vercel.app/driver`** on their phone:
-1. Enter their PIN once (remembered on the phone)
-2. Pick the area, PICK UP / DROP OFF / ISSUE, and DONE / NO BAG
-3. Type the address (+ unit), tap **Take Photo** (opens the camera), upload
-
-### How you view photos
-
-On the **dashboard**, the **Driver Photos** card shows this week's photos by
-day, newest first, with the address, type, status, and time. Every photo also
-appears as a row in the **Photos** tab of your Google Sheet with a direct link.
-
-You can run the cleanup manually anytime:
-`https://your-app.vercel.app/api/photos/cleanup?pin=YOUR_ADMIN_PIN`
-
----
-
 ## Future Enhancements
 
 These can be added later:
 - **Gmail API integration** to auto-send all emails with one click (no more manual per-customer sending)
 - **SMS notifications** via Twilio for customers who prefer texts
 - **Automatic scheduling** — the app sends reminders on a schedule without you doing anything
-- **Driver route view** — a mobile-friendly page the driver opens to see their route with map links
+- **Driver app** — a mobile-friendly page the driver opens to see their route with map links
 - **Bubble integration** — sync confirmations and bag weights with your existing Bubble app
