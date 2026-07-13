@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCustomers, getPickupResponses, getCurrentWeekId, AREA_CONFIG } from "../../../lib/sheets";
 
+// Force dynamic rendering — this route uses request data and must not be statically optimized
+export const dynamic = "force-dynamic";
+
 // GET /api/generate-email-links?area=uptown&week=2026-W13&pin=1234
 // Generates the personalized confirmation links for each customer
 // to embed in your pickup reminder email
@@ -15,12 +18,8 @@ export async function GET(request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const config = AREA_CONFIG[area];
-  if (!config) {
-    return NextResponse.json({ error: "Invalid area: " + area }, { status: 400 });
-  }
-
   try {
+    const config = AREA_CONFIG[area];
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://your-app.vercel.app";
 
     let customers = await getCustomers(area);

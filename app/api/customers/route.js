@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCustomers, AREA_CONFIG } from "../../../lib/sheets";
 
+// Force dynamic rendering — this route uses request data and must not be statically optimized
+export const dynamic = "force-dynamic";
+
 // GET /api/customers?area=uptown&pin=1234
 export async function GET(request) {
   const { searchParams } = new URL(request.url);

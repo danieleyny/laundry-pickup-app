@@ -1,6 +1,9 @@
 import { getCustomers, getKeys, getPickupResponses, getCurrentWeekId, buildPickupList, buildCombinedList, AREA_CONFIG } from "../../../lib/sheets";
 import ExcelJS from "exceljs";
 
+// Force dynamic rendering — this route uses request data and must not be statically optimized
+export const dynamic = "force-dynamic";
+
 async function buildExcelBuffer(pickupList, day, area, isCombined, totalDropoffs, totalPickups) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(`${day} Route`);
@@ -9,8 +12,7 @@ async function buildExcelBuffer(pickupList, day, area, isCombined, totalDropoffs
   titleRow.getCell(1).font = { bold: true, size: 16 };
   ws.mergeCells("A1:D1");
 
-  // NYC-local date so evening downloads don't show tomorrow's (UTC) date
-  const dateStr = new Date().toLocaleDateString("en-US", { timeZone: "America/New_York" });
+  const dateStr = new Date().toLocaleDateString();
   const summary = isCombined
     ? `${dateStr} | ${totalDropoffs} drop-offs + ${totalPickups} pickups`
     : `${dateStr} | ${totalPickups} pickups`;
@@ -85,10 +87,8 @@ export async function GET(request) {
   if (pin !== process.env.ADMIN_PIN) return new Response("Unauthorized", { status: 401 });
   if (!day) return new Response("Missing day parameter", { status: 400 });
 
-  const config = AREA_CONFIG[area];
-  if (!config) return new Response("Invalid area: " + area, { status: 400 });
-
   try {
+    const config = AREA_CONFIG[area];
     const [customers, keysMap, responses] = await Promise.all([
       getCustomers(area), getKeys(), getPickupResponses(area, week),
     ]);
