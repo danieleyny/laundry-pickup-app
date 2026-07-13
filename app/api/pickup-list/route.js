@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { getCustomers, getKeys, getPickupResponses, getCurrentWeekId, buildPickupList, buildCombinedList, AREA_CONFIG } from "../../../lib/sheets";
+import { getCustomers, getKeys, getPickupResponses, getCurrentWeekId, buildPickupList, buildCombinedList, getRouteEdits, applyRouteEdits, getRouteOrder, applyRouteOrder, AREA_CONFIG } from "../../../lib/sheets";
+
+// Force dynamic rendering — this route uses request data and must not be statically optimized
+export const dynamic = "force-dynamic";
 
 // GET /api/pickup-list?area=uptown&day=Friday&week=2026-W13
 export async function GET(request) {
@@ -19,10 +22,12 @@ export async function GET(request) {
 
   try {
     const config = AREA_CONFIG[area];
-    const [customers, keysMap, responses] = await Promise.all([
+    const [customers, keysMap, responses, edits, savedOrder] = await Promise.all([
       getCustomers(area),
       getKeys(),
       getPickupResponses(area, week),
+      getRouteEdits(area, week, day),
+      getRouteOrder(area, week, day),
     ]);
 
     // Is this day2 (Saturday or Thursday)? If so, build a combined list
@@ -46,7 +51,9 @@ export async function GET(request) {
         c.emails.some((e) => day2ConfirmedEmails.includes(e.toLowerCase()))
       );
 
-      const pickupList = buildCombinedList(day1Customers, day2Customers, keysMap, area);
+      let pickupList = buildCombinedList(day1Customers, day2Customers, keysMap, area, day);
+      pickupList = applyRouteEdits(pickupList, edits, area);
+      pickupList = applyRouteOrder(pickupList, savedOrder, area);
 
       return NextResponse.json({
         pickupList,
@@ -70,7 +77,9 @@ export async function GET(request) {
         c.emails.some((e) => confirmedEmails.includes(e.toLowerCase()))
       );
 
-      const pickupList = buildPickupList(confirmedCustomers, keysMap, area, "pickup");
+      let pickupList = buildPickupList(confirmedCustomers, keysMap, area, "pickup", day);
+      pickupList = applyRouteEdits(pickupList, edits, area);
+      pickupList = applyRouteOrder(pickupList, savedOrder, area);
 
       return NextResponse.json({
         pickupList,

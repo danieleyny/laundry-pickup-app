@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCustomers, getKeys, AREA_CONFIG } from "../../../lib/sheets";
 
+// Force dynamic rendering — this route uses request data and must not be statically optimized
+export const dynamic = "force-dynamic";
+
 // GET /api/address-lookup?area=uptown&pin=1234
 // Returns address, unit, and entry method data for autocomplete
 export async function GET(request) {

@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { getCustomers, getPickupResponses, getCurrentWeekId, AREA_CONFIG } from "../../../lib/sheets";
 
+// Force dynamic rendering — this route uses request data and must not be statically optimized
+export const dynamic = "force-dynamic";
+
 // GET /api/generate-email-links?area=uptown&week=2026-W13&pin=1234
 // Generates the personalized confirmation links for each customer
 // to embed in your pickup reminder email

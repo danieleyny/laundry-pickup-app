@@ -2,3 +2,7 @@ node_modules
 .next
 .env
 .env.local
+.vercel
+
+# pulled Vercel secrets (local email testing — never commit)
+.env.vercel-pull

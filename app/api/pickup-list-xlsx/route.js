@@ -1,6 +1,9 @@
 import { getCustomers, getKeys, getPickupResponses, getCurrentWeekId, buildPickupList, buildCombinedList, AREA_CONFIG } from "../../../lib/sheets";
 import ExcelJS from "exceljs";
 
+// Force dynamic rendering — this route uses request data and must not be statically optimized
+export const dynamic = "force-dynamic";
+
 async function buildExcelBuffer(pickupList, day, area, isCombined, totalDropoffs, totalPickups) {
   const wb = new ExcelJS.Workbook();
   const ws = wb.addWorksheet(`${day} Route`);
