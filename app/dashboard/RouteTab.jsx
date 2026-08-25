@@ -240,15 +240,16 @@ export function RouteTab({ pin, area, settings, apiFetch }) {
               </Button>
               <Button variant="primary" size="sm" onClick={openAdd}>+ Add stop</Button>
               <Button variant="secondary" size="sm" onClick={downloadXlsx}>⬇ Excel</Button>
-              <Button
-                variant={optimizerEnabled ? "primary" : "ghost"}
-                size="sm"
-                onClick={optimize}
-                disabled={optimizing || !optimizerEnabled}
-                title={optimizerEnabled ? "" : "Enable in Settings → Route optimizer"}
-              >
-                {optimizing ? "Optimizing…" : "✨ Optimize route"}
-              </Button>
+              {optimizerEnabled && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={optimize}
+                  disabled={optimizing}
+                >
+                  {optimizing ? "Optimizing…" : "✨ Optimize route"}
+                </Button>
+              )}
             </div>
           </div>
 
